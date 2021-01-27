@@ -47,6 +47,14 @@ However, floats can precisely represent every power of two up to 2<sup>126</sup>
 And this is where the problem lies: every unrepresentable value will be rounded to the nearest representable one.
 In particular, this means that every integer at or above 4,294,967,168 will be rounded up to 4,294,967,296, leading to a division that results in 1.
         </p>
+        <p>
+When generating random integers, they usually come from ranges that are a power of two in size: a random 32-bit integer, or even a single random bit.
+In order to not introduce any bias in the output, our mapping to floats should target a set of floats with the size being a smaller or equal power of two.
+Otherwise, as stated by the pigeonhole principle, the input values are not cleanly sorted into the output "buckets" and some outputs will be more common than others.
+Fortunately, the float range [0 .. 1) contains a number of floats that is a power of two.
+Unfortunately, the float range [0 .. 1] does not, it is one larger, obviously.
+It should be noted though, that this bias is really tiny, we're talking about 2<sup>-24</sup> after all.
+        </p>
       </section>
 
       <section>
@@ -233,6 +241,7 @@ float random_float(RandomState& state)
       <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2021-01-27 - Added the pigeonhole argument.</li>
           <li>2021-01-27 - Initial post.</li>
         </ul>
       </section>
