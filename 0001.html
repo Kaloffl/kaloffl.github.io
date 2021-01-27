@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/rss+xml"  title="Lars' blog RSS" href="rss.xml">
+    <title>random_float() - Lars' Website</title>
+    <style>
+@media (prefers-color-scheme: dark){
+  body {color:white;background:black}
+  a:link {color:#9cf}
+  a:hover, a:visited:hover {color:#cef}
+  a:visited {color:#c9f}
+}
+body {
+  font: 1.2em/1.62 sans-serif; /* use system-default sans-serif font */
+  margin: 0 auto; /* centers the content */
+  max-width: 60em;
+  padding:0 .62em;
+}
+figure {
+  background: rgba(50%,50%,50%,5%);
+  display: table;
+  margin: 0 auto;
+}
+figcaption {
+  text-align: center;
+}
+pre {
+  font-family: monospace;
+  padding: 0 1em;
+}
+nav {
+  background-color: indianred; /* picked on accident, but looks nice */
+}
+nav h1 {
+  margin: 0;
+  display: inline-block;
+}
+a {
+  color: indianred; /* also works well against a dark background */
+}
+nav a {
+  padding: 0 0.5em;
+  color: white;
+  display: inline-block;
+}
+footer {
+  border-top: 1px solid indianred;
+  text-align: center;
+}
+    </style>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="rss.xml" title="rss feed">RSS Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>random_float()</h2>
+        <div>First published: <time>2020-12-01</time></div>
+      </header>
+      <section>
+        <p>
+Let's start this blog with a discussion (or monologue) about a one-liner I've recently written: a function that turns a 32-bit integer into a floating-point value in the range [0 .. 1).
+"What's so special about that?", you might ask, "just cast the integer to a float and divide by the maximum value of the integer!"
+Well, it turns out the be not so simple, and there a few subtleties to consider.
+      </p>
+      </section>
+
+      <section>
+        <h3>Exclude 1.0f</h3>
+        <p>
+As far as I can tell, the norm for random floats is to exclude the value 1.0 and only to go until the next smallest float value: ~0.9999999404 (= 2<sup>-1</sup> * (2 - 2<sup>-24</sup>)).
+This is useful, for example if you want to pick a random item from an array: multiply the random float by the array length and round down.
+This always gives you an index inside of the array bounds.
+And as long as the array length doesn't exceed a value of 2<sup>24</sup> (= 16,777,216), this will cover every possible index, after that, the precision of a float is not enough and it will only cover every second, fourth, ... index.
+        </p>
+        <p>
+So if we have 32 random bits, which interpreted as an integer can represent values up to FFFFFFFF<sub>hex</sub> (= 4,294,967,295<sub>dec</sub> = 2<sup>32</sup> - 1), then let's increase that number by one and divide by that!
+But here is where we run into trouble: a float has only 24 bits of precision, which means that we can't address every integer larger than 2<sup>24</sup>.
+At that number, floats can only represent every second integer, until 2<sup>25</sup> (= 33,554,432) where only every fourth integer is representable, etc.
+However, floats can precisely represent every power of two up to 2<sup>126</sup>, so dividing by 2<sup>32</sup> would be possible, only the number we want to divide can't be represented exactly in most cases.
+And this is where the problem lies: every unrepresentable value will be rounded to the nearest representable one.
+In particular, this means that every integer at or above 4,294,967,168 will be rounded up to 4,294,967,296, leading to a division that results in 1.
+        </p>
+      </section>
+
+      <section>
+        <h3>Varying Resolution</h3>
+        <p>
+Okay, but we can solve that somehow, maybe set the rounding mode to always round, or maybe we allow 1 as a valid result, but there is another problem.
+Let us ignore the random aspect for now and take a look at the first and last few values that this int-to-float scheme will produce:
+        </p>
+        <figure id="table0">
+          <pre>
+               |                |   difference   |   max. float   |   max. float  
+ input integer |  output float  | between floats | precision down |  precision up 
+==================================================================================
+            0  |  0.0000000000  |                |  1.401298e-45  |  1.401298e-45 
+            1  |  0.0000000002  |  2.328306e-10  |  1.387779e-17  |  2.775558e-17 
+            2  |  0.0000000005  |  2.328306e-10  |  2.775558e-17  |  5.551115e-17 
+            3  |  0.0000000007  |  2.328306e-10  |  5.551115e-17  |  5.551115e-17 
+            4  |  0.0000000009  |  2.328306e-10  |  5.551115e-17  |  1.110223e-16 
+            5  |  0.0000000012  |  2.328306e-10  |  1.110223e-16  |  1.110223e-16 
+            6  |  0.0000000014  |  2.328306e-10  |  1.110223e-16  |  1.110223e-16 
+            7  |  0.0000000016  |  2.328306e-10  |  1.110223e-16  |  1.110223e-16 
+            8  |  0.0000000019  |  2.328306e-10  |  1.110223e-16  |  2.220446e-16 
+            9  |  0.0000000021  |  2.328306e-10  |  2.220446e-16  |  2.220446e-16 
+          ...  |           ...  |           ...  |           ...  |           ... 
+   4294964865  |  0.9999994636  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+   4294965120  |  0.9999995232  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+   4294965377  |  0.9999995828  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+   4294965632  |  0.9999996424  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+   4294965889  |  0.9999997020  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+   4294966144  |  0.9999997616  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+   4294966401  |  0.9999998212  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+   4294966656  |  0.9999998808  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+   4294966913  |  0.9999999404  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+   4294967168  |  1.0000000000  |  5.960464e-08  |  5.960464e-08  |  1.192093e-07 
+          </pre>
+          <figcaption>Table 0: The first and last 10 floats generated by the 32-bit divide.</figcaption>
+        </figure>
+        <p>
+This list was produced by iterating over all possible 32-bit integers and printing a line whenever a different float result was produced.
+There are a few things to note:
+        </p>
+        <ul>
+          <li>There are 83,886,081 unique floating-point values produced.</li>
+          <li>In the beginning, every input integer has a corresponding output float. At the end we can see huge jumps in integer values before a different float is produced.</li>
+          <li>The difference between consecutive floating-point values changes by almost two orders of magnitude.</li>
+          <li>The maximum precision representable by a float starts off finer (~1.4e-17, ignoring the precision at 0) and ends at the same as the difference between consecutive floats (~6e-8)</li>
+          <li>The precision drops again at 1.0, another reason why we might want to avoid that value.</li>
+        </ul>
+        <p>
+This does not mean, however, that there is any bias in the distribution of values.
+When we take 100,000 random 32-bit integers, convert them to float as described above and sort the result into 100 buckets, we still get quite even results:
+        </p>
+        <figure id="table1">
+          <pre>
+[0.00 .. 0.01):  982    [0.20 .. 0.21):  960    [0.40 .. 0.41): 1027    [0.60 .. 0.61): 1021    [0.80 .. 0.81):  952
+[0.01 .. 0.02):  950    [0.21 .. 0.22):  989    [0.41 .. 0.42): 1000    [0.61 .. 0.62):  957    [0.81 .. 0.82): 1072
+[0.02 .. 0.03):  998    [0.22 .. 0.23): 1000    [0.42 .. 0.43): 1008    [0.62 .. 0.63):  948    [0.82 .. 0.83):  995
+[0.03 .. 0.04): 1024    [0.23 .. 0.24): 1019    [0.43 .. 0.44): 1041    [0.63 .. 0.64):  969    [0.83 .. 0.84): 1005
+[0.04 .. 0.05): 1018    [0.24 .. 0.25):  952    [0.44 .. 0.45):  970    [0.64 .. 0.65): 1039    [0.84 .. 0.85):  998
+[0.05 .. 0.06): 1013    [0.25 .. 0.26): 1010    [0.45 .. 0.46): 1050    [0.65 .. 0.66):  958    [0.85 .. 0.86):  979
+[0.06 .. 0.07): 1030    [0.26 .. 0.27): 1007    [0.46 .. 0.47): 1031    [0.66 .. 0.67):  981    [0.86 .. 0.87): 1033
+[0.07 .. 0.08): 1022    [0.27 .. 0.28): 1007    [0.47 .. 0.48):  975    [0.67 .. 0.68): 1006    [0.87 .. 0.88):  955
+[0.08 .. 0.09):  990    [0.28 .. 0.29):  991    [0.48 .. 0.49):  963    [0.68 .. 0.69): 1067    [0.88 .. 0.89):  992
+[0.09 .. 0.10):  934    [0.29 .. 0.30): 1046    [0.49 .. 0.50):  992    [0.69 .. 0.70): 1023    [0.89 .. 0.90): 1002
+[0.10 .. 0.11):  968    [0.30 .. 0.31):  965    [0.50 .. 0.51):  982    [0.70 .. 0.71): 1033    [0.90 .. 0.91): 1014
+[0.11 .. 0.12): 1009    [0.31 .. 0.32):  997    [0.51 .. 0.52): 1060    [0.71 .. 0.72): 1011    [0.91 .. 0.92): 1003
+[0.12 .. 0.13): 1050    [0.32 .. 0.33): 1045    [0.52 .. 0.53): 1000    [0.72 .. 0.73): 1021    [0.92 .. 0.93): 1018
+[0.13 .. 0.14):  968    [0.33 .. 0.34):  995    [0.53 .. 0.54): 1018    [0.73 .. 0.74): 1061    [0.93 .. 0.94):  970
+[0.14 .. 0.15): 1024    [0.34 .. 0.35):  958    [0.54 .. 0.55):  997    [0.74 .. 0.75):  956    [0.94 .. 0.95):  916
+[0.15 .. 0.16):  967    [0.35 .. 0.36):  971    [0.55 .. 0.56): 1007    [0.75 .. 0.76): 1018    [0.95 .. 0.96):  993
+[0.16 .. 0.17):  984    [0.36 .. 0.37):  987    [0.56 .. 0.57):  992    [0.76 .. 0.77): 1021    [0.96 .. 0.97): 1007
+[0.17 .. 0.18):  978    [0.37 .. 0.38):  993    [0.57 .. 0.58): 1043    [0.77 .. 0.78):  984    [0.97 .. 0.98): 1039
+[0.18 .. 0.19):  968    [0.38 .. 0.39):  958    [0.58 .. 0.59): 1067    [0.78 .. 0.79):  997    [0.98 .. 0.99):  987
+[0.19 .. 0.20):  997    [0.39 .. 0.40): 1008    [0.59 .. 0.60):  973    [0.79 .. 0.80): 1023    [0.99 .. 1.00): 1048
+          </pre>
+          <figcaption>Table 1: A random distribution of 100,000 random floats produced by the 32-bit-divide into 100 buckets.</figcaption>
+        </figure>
+        <p>
+Maybe not the best distribution, but certainly no bias towards the high or low values, so why all the fuss?
+Let's loot a bit close at these values, as close as the floating point format permits, in fact.
+Here is a (simplified) view of the distribution of possible random values with regards to floating-point resolution:
+        </p>
+        <figure>
+          <pre>
+                                                         8       8       8       8       8       8       8       8        
+ o o o o o o o o o o o o 8   8   8   8   8   8   8   8   8       8       8       8       8       8       8       8        
+ ||||||||| | | | | | | | |   |   |   |   |   |   |   |   |       |       |       |       |       |       |       |       |
+1/16    1/8             1/4                             1/2                                                              1
+1/16    2/16                                            8/16    9/16                                                      
+          </pre>
+        </figure>
+        <p>
+This "chart" is an exaggerated view of how floats work and how the random numbers will distributed.
+Each 'o' represents a possible random number ('8' are two in the same place), the lines show the resolution of this low-res float at that scale.
+As can be seen: we have the same density of values.
+In the range [1/16 .. 2/16) we count 4 values and in the range [8/16 .. 9/16) we also count 4 values.
+The only difference: the values in the higher range fall on the same value, while they are more spread out in the lower range.
+Another thing to note is, that not every value in the [1/16 .. 1/8) range is used.
+This is in line with what we see in the first table: the float resolution is higher than the difference between the floats we get by dividing consecutive integers.
+        </p>
+      </section>
+
+      <section>
+        <h3>The Alternative</h3>
+        <p>
+While I have no strong argument against the above distribution, I'd prefer it if all possible values were spaced evenly.
+That way it is much clearer how many different values are possible, and we have no different behavior when working at the top or the bottom of the range.
+This is how it would look like, if we spread the possible values evenly, which we can get by only taking the integers in the range [0 .. 16,777,216):
+        </p>
+        <figure>
+          <pre>
+ o       o       o       o       o       o       o       o       o       o       o       o       o       o       o        
+ ||||||||| | | | | | | | |   |   |   |   |   |   |   |   |       |       |       |       |       |       |       |       |
+1/16    1/8             1/4                             1/2                                                              1
+          </pre>
+        </figure>
+        <p>
+Here we start skipping possible float values immediately as the value goes below 0.5, by always taking the coarsest step in our range: 2<sup>-24</sup>.
+This way we only use 24 bits of our 32-bit integer, leaving 8 bits to do whatever: masking off and dropping, xoring into the 24 bits, saving for later, ...
+I'd argue, that this is the better scheme, as we have no surprising resolution changes.
+Here's table 1 for the 24-bit scheme:
+        </p>
+        <figure id="table2">
+          <pre>
+               |                |   difference   |   max. float   |   max. float  
+ input integer |  output float  | between floats | precision down |  precision up 
+==================================================================================
+            0  |  0.0000000000  |                |  1.401298e-45  |  1.401298e-45 
+            1  |  0.0000000596  |  5.960464e-08  |  3.552714e-15  |  7.105427e-15 
+            2  |  0.0000001192  |  5.960464e-08  |  7.105427e-15  |  1.421085e-14 
+            3  |  0.0000001788  |  5.960464e-08  |  1.421085e-14  |  1.421085e-14 
+            4  |  0.0000002384  |  5.960464e-08  |  1.421085e-14  |  2.842171e-14 
+            5  |  0.0000002980  |  5.960464e-08  |  2.842171e-14  |  2.842171e-14 
+            6  |  0.0000003576  |  5.960464e-08  |  2.842171e-14  |  2.842171e-14 
+            7  |  0.0000004172  |  5.960464e-08  |  2.842171e-14  |  2.842171e-14 
+            8  |  0.0000004768  |  5.960464e-08  |  2.842171e-14  |  5.684342e-14 
+            9  |  0.0000005364  |  5.960464e-08  |  5.684342e-14  |  5.684342e-14 
+          ...  |           ...  |           ...  |           ...  |           ... 
+     16777206  |  0.9999994040  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+     16777207  |  0.9999994636  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+     16777208  |  0.9999995232  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+     16777209  |  0.9999995828  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+     16777210  |  0.9999996424  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+     16777211  |  0.9999997020  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+     16777212  |  0.9999997616  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+     16777213  |  0.9999998212  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+     16777214  |  0.9999998808  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+     16777215  |  0.9999999404  |  5.960464e-08  |  5.960464e-08  |  5.960464e-08 
+          </pre>
+          <figcaption>Table 2: The first and last 10 floats generated by the 24-bit division.</figcaption>
+        </figure>
+        <p>
+Here we can see:
+        </p>
+        <ul>
+          <li>There are 16,777,216 unique floating-point values produced.</li>
+          <li>We get a 1:1 correspondence between input integer and output float.</li>
+          <li>There is a constant difference between consecutive output floats.</li>
+          <li>The values stop exactly one step before 1.</li>
+        </ul>
+        <p>
+And to finish it all off, here is the code, in C++:
+        </p>
+        <figure>
+          <pre>
+float random_float(RandomState& state)
+{
+  return (float)(random_uint32(state) & 0xFFFFFFU) / 16777216.0f;
+}
+          </pre>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Closing remarks</h2>
+        <ul>
+          <li>The same is true for doubles and half-floats, but they obviously have a different mantissa size, so adjust the numbers accordingly.</li>
+          <li>If you want to generate a range with positive and negative numbers, don't just use one of the random bits to flip the sign. That way you would get double coverage of the 0.</li>
+          <li>Why care? Random numbers are something that are expected to *just work*. While the naive method seems to work, it might lead to surprises. The 24-bit scheme is arguably simpler due to the 1:1 mapping between inputs and outputs.</li>
+          <li>This post is long enough, so I'll write another one to look at a way to get evenly-distributed floats for arbitrary ranges.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Changelog</h2>
+        <ul>
+          <li>2021-01-27 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      Last change: <a href="changelog.html">2021-01-27</a>
+    </footer>
+  </body>
+</html>
