@@ -21,13 +21,13 @@
     <article>
       <header>
         <h2>intersect_lines() [Part 1]</h2>
-        <div>First published: <time>2020-10-10</time></div>
+        <div>First published: <time>2021-10-10</time></div>
       </header>
       <section>
         <p>
 Recently I looking to get some exercise working with Projective Geometric Algebra.
-So I scrolled through my personal codebase looking for something to reimplement, when I saw at my 2D line intersection code (listed below).
-I couldn't really remember where or how I got it, and it had probably been ported between languages at least twice.
+So I scrolled through my personal codebase looking for something to reimplement, when I saw at my 2D line intersection code (listing 0).
+I couldn't remember where or how I got it, and I had probably ported it between languages at least twice since writing it.
         </p>
         <figure id="listing0">
           <pre>
@@ -54,12 +54,12 @@ inline int line_line_intersection(
         </figure>
         <p>
 So I started rewriting it, using the obvious operations to join the points into lines and meet the lines to get the intersection.
-One caveat being, that the points needs to be normalized, meaning that the x and y component have to be divided by z.
-But because I'm actually interesting in intersecting line segments, the code also has to check where the intersection happens.
+One caveat being, that the resulting point needs to be normalized, meaning that the e<sub>01</sub> (x) and e<sub>20</sub> (y) component have to be divided by e<sub>12</sub> (z).
+But because I'm actually interesting in intersecting line segments, the code also has to check that the intersection happens between the original points, not outside.
 The elegant way seemed to be to join the lines with each of the points of the other line, resulting in two oriented areas per line.
 If the sign of this areas differed, the points were on opposite sides, if this was true for both line segments, the must be intersecting.
-The more efficient code though turned out to be taking the difference from the intersection point to each of the four initial points and then dotting each of the differences of a line.
-If the intersection was between the points, the difference would point in opposite directions, making the dot product negative.
+The more efficient code though turned out to be taking the difference from the intersection point to each of the four initial points and then taking the dot product of the the differences per line.
+If the intersection was between the points, the difference would point in opposite directions, making the product of dot products negative.
 If both products are negative, the intersection happened inside the segments.
         </p>
         <figure id="equation0">
@@ -73,7 +73,7 @@ bool intersects = (a - p) dot (b - p) < 0 && (c - p) dot (d - p) < 0
           <figcaption>Equation 0: pseudomath for finding a line segment intersection with PGA</figcaption>
         </figure>
         <p>
-But after implementing all that, I counted the number ob calculations that each algorithm had to do and was surprised to find, that the PGA version was pretty bad.
+But after implementing all that, I counted the number of calculations that each algorithm had to do and was surprised to find, that the PGA version was pretty bad.
 While my existing code has 11 subs/adds, 8 muls and 2 divs throughout those vector operations, the PGA version has 17 adds/subs, 14 muls and 2 divs.
 If you want to count yourself, the "unrolled" code of both versions is below.
         </p>
@@ -152,6 +152,11 @@ inline int line_line_intersection(
 
       <section>
         <h3>The easiest way to find an intersection between line segments</h3>
+        <p>
+I was about to say that this algorithm is so easy, you could do it by hand.
+But then I was informed, that there exists an even easier way to tell if two lines intersect, called "by eye".
+So let's just stick to computers and algorithms.
+        </p>
         <figure id="figure0">
           <pre>
                A           |           C
@@ -163,9 +168,9 @@ inline int line_line_intersection(
           <figcaption>Figure 0: Two non-intersecting and two intersecting lines, each made of two points A, B and C, D.</figcaption>
         </figure>
         <p>
+We have here two line segments, defined by their endpoints: A, B and C, D.
 The first step to the algorithm is to turn the line segments into differences: A-B and D-C.
-Another way to look at is that we move the one line segment so that one of its ends lines up with the end of the second segment.
-In this case we are lining up point B and C and move both of them to the origin.
+Another way to look at is that we move both line segment so that one of their ends lines up with the origin.
         </p>
         <figure id="figure1">
           <pre>
@@ -225,6 +230,7 @@ Cheers!
       <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2021-10-12 - Improved formulations.</li>
           <li>2021-10-10 - Initial post.</li>
         </ul>
       </section>
@@ -232,7 +238,7 @@ Cheers!
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2021-10-10</a>
+      Last change: <a href="changelog.html">2021-10-12</a>
     </footer>
   </body>
 </html>

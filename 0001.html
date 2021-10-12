@@ -21,7 +21,7 @@
     <article>
       <header>
         <h2>random_float()</h2>
-        <div>First published: <time>2020-12-01</time></div>
+        <div>First published: <time>2021-01-27</time></div>
       </header>
       <section>
         <p>
@@ -60,7 +60,7 @@ It should be noted though, that this bias is really tiny, we're talking about 2<
       <section>
         <h3>Varying Resolution</h3>
         <p>
-Okay, but we can solve that somehow, maybe set the rounding mode to always round, or maybe we allow 1 as a valid result, but there is another problem.
+Okay, but we can solve that somehow, maybe set the rounding mode to always round down, or maybe we allow 1 as a valid result, but there is another issue.
 Let us ignore the random aspect for now and take a look at the first and last few values that this int-to-float scheme will produce:
         </p>
         <figure id="table0">
@@ -225,6 +225,7 @@ float random_float(RandomState& state)
   return (float)(random_uint32(state) & 0xFFFFFFU) / 16777216.0f;
 }
           </pre>
+          <figcaption>Listing 0</figcaption>
         </figure>
       </section>
 
@@ -241,6 +242,7 @@ float random_float(RandomState& state)
       <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2021-10-12 - Improved formulations.</li>
           <li>2021-01-27 - Added the pigeonhole argument.</li>
           <li>2021-01-27 - Initial post.</li>
         </ul>
@@ -249,7 +251,7 @@ float random_float(RandomState& state)
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2021-10-10</a>
+      Last change: <a href="changelog.html">2021-10-12</a>
     </footer>
   </body>
 </html>
