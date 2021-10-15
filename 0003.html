@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/rss+xml"  title="Lars' blog RSS" href="rss.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>intersect_lines() [Part 1] - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="rss.xml" title="rss feed">RSS Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>intersect_lines() [Part 2]</h2>
+        <div>First published: <time>2021-10-15</time></div>
+      </header>
+      <section>
+        <p>
+<a href="0002.html">Last we left of</a>, we had a way to check if two line segments intersect, but other questions like *where* they intersect were left open.
+To get to that answer, we'll first take a closer look at what I wrote at the end of the last article: the Minkowski Difference.
+        </p>
+      </section>
+      <section>
+        <h3>line - line = parallelogram</h3>
+        <p>
+The quick introduction to Minkowski Differences is this: for every point in shape A take every point in shape B and subtract it.
+The set of all resulting points is the Minkowski Difference.
+In theory, we have infinitely many points that lie on our two line segments, but luckily we only have to use the endpoints and can imagine a convex hull around the four resulting points.
+        </p>
+        <figure id="figure0">
+          <pre>
+            C         (A-D)-----(B-D)
+             \             \     \
+A-----B  -    \    =        \ O   \
+               \             \     \
+O           O   D         (A-C)-----(B-C)
+          </pre>
+          <figcaption>Figure 0: Taking the difference of two lines. O indicates the Origin.</figcaption>
+        </figure>
+        <p>
+This almost looks like what we had last time, but with two differences:
+First, some points seem to have been turned around: D is on top, C at the bottom, which is to be expected since we used subtraction instead of addition this time (and last time I hat to fiddle with the signs to make it work in the first place).
+Second, the Origin is not on one of the corners anymore, but instead somewhere inside the shape.
+Though we can be a bit more specific than 'somewhere': the location of the Origin in relation to the shape tells us if and where the line segments intersect.
+If the Origin is outside of the parallelogram, the segments don't touch.
+If it is inside the shape and close to A-C, then the intersection of the lines is close to the points A and C, and so on. 
+This is a general property of Minkowski Differences, in any number of dimensions, not just two.
+This is also how a much more advanced collision-detection algorithm works: the Gilbert–Johnson–Keerthi algorithm.
+But luckily for us, when we deal with just two lines in 2D, we don't need a fancy iterative algorithm to locate the Origin, we just need a little math.
+        </p>
+      </section>
+      <section>
+        <h3>Where does he come from, where does he go?</h3>
+        <figure id="figure1">
+          <pre>
+(A-D)-----(B-D)              |        ---- C
+     \     \                 |       t \    \
+      \ O   \ -----          |          -- A-\---B
+       \     \     \ t       |                \
+    (A-C)-----(B-C) -        |                 D
+        |_|                  |             |_|
+         s                   |              s
+          </pre>
+          <figcaption>Figure 1: Locating the Origin inside the shape and the point of intersection between the lines.</figcaption>
+        </figure>
+        <p>
+To locate the Origin relative to the parallelogram, we can use two numbers: how far along the B-A direction and how far along the D-C direction to go from the A-C corner?
+Let's call the first distance s and the second one t.
+If we have those two distances, it will also be trivial to check if the Origin lies in- or outside of the parallelogram: just check 0 <= s and s <= ||B-A|| and the equivalent for t.
+Getting the real intersection point is also easy now, you can just start at point A and go s units along in the direction of B.
+        </p>
+        <p>
+Getting those two distances is not quite as trivial on first glance.
+And while I've already spoiled the solution in the previous post, let's take this opportunity to try and solve it with PGA again.
+Let's take stock what we have: the four corners of the parallelogram, A-C, A-D, B-C, B-D, as well as the Origin.
+Because these are differences between points, It would seem appropriate to consider them directions in PGA, with the e<sub>12</sub> part being zero.
+But at least the approach that I chose views these corners as points with the notation shown in listing 0.
+        </p>
+        <figure id="listing0">
+          <pre>
+Point A-C  =  ac<sub>20</sub> * e<sub>20</sub> + ac<sub>01</sub> * e<sub>01</sub> + e<sub>12</sub>
+Point A-D  =  ad<sub>20</sub> * e<sub>20</sub> + ad<sub>01</sub> * e<sub>01</sub> + e<sub>12</sub>
+Point B-C  =  bc<sub>20</sub> * e<sub>20</sub> + bc<sub>01</sub> * e<sub>01</sub> + e<sub>12</sub>
+Point B-D  =  bd<sub>20</sub> * e<sub>20</sub> + bd<sub>01</sub> * e<sub>01</sub> + e<sub>12</sub>
+(note: ac<sub>12</sub> = ad<sub>12</sub> = bc<sub>12</sub> = bd<sub>12</sub> = 1)
+          </pre>
+          <figcaption>Listing 0: Notation for the corners of the parallelogram</figcaption>
+        </figure>
+        <p>
+The strategy I came up with to find s and t uses the fact, that it is easy in PGA to get the area of a parallelogram: just join three points together.
+The first join creates a line through the first two points, the second one joins the line and third point into the area as a single scalar value.
+By creating an area from A-C, A-D and the Origin, we get how much is "on the A side" of the Origin.
+Divide that through the area of the whole parallelogram and you get a number that is 0 if the intersection happens directly on point A, 1 if it happens on B and so on.
+Do the same for the A-C, B-C, Origin area and you have both the s and t numbers we were looking for.
+If both are between 0 and 1, we not only know that there was an intersection, but also where.
+        </p>
+        <figure id="listing1">
+          <pre>
+Line l = A-C join A-D
+Line m = B-C join A-C
+
+Area h = l join B-C
+Area i = l join Origin
+Area j = m join Origin
+
+s = i / h
+t = j / h
+          </pre>
+          <figcaption>Listing 1: the plan of action to get the s and t coordinates</figcaption>
+        </figure>
+      </section>
+      <section>
+        <h3>The Numbers, Mason!</h3>
+        <p>
+Now let's go through the actual calculations, instead of just hand-waving some abstract operations.
+For reference, listing 1 shows the full join operation between two multivectors, which I took form the sourcecode avaiable on bivector.net [1].
+I'm still looking for a way to derive it myself from the geometric product.
+        </p>
+        <figure id="listing2">
+          <pre>
+C = A join B
+
+A = a<sub>s</sub> + a<sub>0</sub>e<sub>0</sub> + a<sub>1</sub>e<sub>1</sub> + a<sub>2</sub>e<sub>2</sub> + a<sub>01</sub>e<sub>01</sub> + a<sub>20</sub>e<sub>20</sub> + a<sub>12</sub>e<sub>12</sub> + a<sub>012</sub>e<sub>012</sub>
+B = b<sub>s</sub> + b<sub>0</sub>e<sub>0</sub> + b<sub>1</sub>e<sub>1</sub> + b<sub>2</sub>e<sub>2</sub> + b<sub>01</sub>e<sub>01</sub> + b<sub>20</sub>e<sub>20</sub> + b<sub>12</sub>e<sub>12</sub> + b<sub>012</sub>e<sub>012</sub>
+C = c<sub>s</sub> + c<sub>0</sub>e<sub>0</sub> + c<sub>1</sub>e<sub>1</sub> + c<sub>2</sub>e<sub>2</sub> + c<sub>01</sub>e<sub>01</sub> + c<sub>20</sub>e<sub>20</sub> + c<sub>12</sub>e<sub>12</sub> + c<sub>012</sub>e<sub>012</sub>
+
+c<sub>s  </sub> = a<sub>s  </sub> * b<sub>012</sub> + a<sub>0  </sub> * b<sub>12</sub> + a<sub>1 </sub> * b<sub>20</sub> + a<sub>2  </sub> * b<sub>01</sub> + a<sub>01</sub> * b<sub>2</sub> + a<sub>20</sub> * b<sub>1</sub> + a<sub>12</sub> * b<sub>0</sub> + a<sub>012</sub> * b<sub>s</sub>
+c<sub>0  </sub> = a<sub>0  </sub> * b<sub>012</sub> + a<sub>01 </sub> * b<sub>20</sub> - a<sub>20</sub> * b<sub>01</sub> + a<sub>012</sub> * b<sub>0</sub>
+c<sub>1  </sub> = a<sub>1  </sub> * b<sub>012</sub> - a<sub>01 </sub> * b<sub>12</sub> + a<sub>12</sub> * b<sub>01</sub> + a<sub>012</sub> * b<sub>1</sub>
+c<sub>2  </sub> = a<sub>2  </sub> * b<sub>012</sub> + a<sub>20 </sub> * b<sub>12</sub> - a<sub>12</sub> * b<sub>20</sub> + a<sub>012</sub> * b<sub>2</sub>
+c<sub>01 </sub> = a<sub>01 </sub> * b<sub>012</sub> + a<sub>012</sub> * b<sub>01</sub>
+c<sub>20 </sub> = a<sub>20 </sub> * b<sub>012</sub> + a<sub>012</sub> * b<sub>20</sub>
+c<sub>12 </sub> = a<sub>12 </sub> * b<sub>012</sub> + a<sub>012</sub> * b<sub>12</sub>
+c<sub>012</sub> = a<sub>012</sub> * b<sub>012</sub>
+          </pre>
+          <figcaption>Listing 2: the full 2D PGA calculation for joining two multivectors</figcaption>
+        </figure>
+        <p>
+Equipped with this, we can start to plug in the known values and write some code.
+        </p>
+        <figure id="listing3">
+          <pre>
+Line l = A-C join A-D
+
+l<sub>s  </sub> = 0 * 0 + 0 * 1 + 0 * ad<sub>20</sub> + 0 * ad<sub>01</sub> + ac<sub>01</sub> * 0 + ac<sub>20</sub> * 0 + 1 * 0 + 0 * 0
+l<sub>0  </sub> = 0 * 0 + ac<sub>01</sub> * ad<sub>20</sub> - ac<sub>20</sub> * ad<sub>01</sub> + 0 * 0
+l<sub>1  </sub> = 0 * 0 - ac<sub>01</sub> * 1 + 1 * ad<sub>01</sub> + 0 * 0
+l<sub>2  </sub> = 0 * 0 + ac<sub>20</sub> * 1 - 1 * ad<sub>20</sub> + 0 * 0
+l<sub>01 </sub> = ac<sub>01</sub> * 0 + 0 * ad<sub>01</sub>
+l<sub>20 </sub> = ac<sub>20</sub> * 0 + 0 * ad<sub>20</sub>
+l<sub>12 </sub> = 1 * 0 + 0 * 1
+l<sub>012</sub> = 0 * 0
+
+Simplified:
+l<sub>s</sub> = l<sub>01</sub> = l<sub>20</sub> = l<sub>12</sub> = l<sub>012</sub> = 0
+l<sub>0</sub> = ac<sub>01</sub> * ad<sub>20</sub> - ac<sub>20</sub> * ad<sub>01</sub> = cd<sub>20</sub> * ac<sub>01</sub> - cd<sub>01</sub> * ac<sub>20</sub>
+l<sub>1</sub> = ad<sub>01</sub> - ac<sub>01</sub> =  cd<sub>01</sub>
+l<sub>2</sub> = ac<sub>20</sub> - ad<sub>20</sub> = -cd<sub>20</sub>
+          </pre>
+          <figcaption>Listing 3: The join specialized for two points</figcaption>
+        </figure>
+        <p>
+Well that got a lot shorter!
+And by merging ad-ac into cd it got even shorter.
+I also shuffled around the differences used in l<sub>0</sub> to use cd instead of ad.
+The same can be done for m, so that it uses A-B and A-C.
+Now onto joining the lines and points.
+        </p>
+        <figure id="listing4">
+          <pre>
+Area h = l join B-C
+
+h<sub>s  </sub> = 0 * 0 + l<sub>0</sub> * 1 + l<sub>1</sub> * bc<sub>20</sub> + l<sub>2</sub> * bc<sub>01</sub> + 0 * 0 + 0 * 0 + 0 * 0 + 0 * 0
+h<sub>0  </sub> = l<sub>0</sub> * 0 + 0 * bc<sub>20</sub> - 0 * bc<sub>01</sub> + 0 * 0
+h<sub>1  </sub> = l<sub>1</sub> * 0 - 0 * 1 + 0 * bc<sub>01</sub> + 0 * 0
+h<sub>2  </sub> = l<sub>2</sub> * 0 + 0 * 1 - 0 * bc<sub>20</sub> + 0 * 0
+h<sub>01 </sub> = 0 * 0 + 0 * bc<sub>01</sub>
+h<sub>20 </sub> = 0 * 0 + 0 * bc<sub>20</sub>
+h<sub>12 </sub> = 0 * 0 + 0 * 1
+h<sub>012</sub> = 0 * 0
+
+Simplified:
+h<sub>s</sub> = l<sub>0</sub> + l<sub>1</sub> * bc<sub>20</sub> + l<sub>2</sub> * bc<sub>01</sub>
+h<sub>0</sub> = h<sub>1</sub> = h<sub>2</sub> = h<sub>01</sub> = h<sub>20</sub> = h<sub>12</sub> = h<sub>012</sub> = 0
+
+i<sub>s</sub> = l<sub>0</sub> + l<sub>1</sub> * 0 + l<sub>2</sub> * 0 = l<sub>0</sub>
+          </pre>
+          <figcaption>Listing 4: The join specialized for a line and point</figcaption>
+        </figure>
+        <p>
+As expected, joining l and B-C reduced down to a single scalar value with a nice and easy equation.
+Even smaller are the equations for i and j, because they are joined with the Origin, where even more terms are zero.
+But it turns out, h can be just as small, if we inline and refactor the expressions of l.
+        </p>
+        <figure id="listing5">
+          <pre>
+h<sub>s</sub> = l<sub>0</sub> + l<sub>1</sub> * bc<sub>20</sub> + l<sub>2</sub> * bc<sub>01</sub>
+   = cd<sub>20</sub> * ac<sub>01</sub> - cd<sub>01</sub> * ac<sub>20</sub> + cd<sub>01</sub> * bc<sub>20</sub> - cd<sub>20</sub> * bc<sub>01</sub>
+   = cd<sub>20</sub> * (ac<sub>01</sub> - bc<sub>01</sub>) - cd<sub>01</sub> * (ac<sub>20</sub> - bc<sub>20</sub>)
+   = cd<sub>20</sub> * ab<sub>01</sub> - cd<sub>01</sub> * ab<sub>20</sub>
+          </pre>
+          <figcaption>Listing 5: Further optimiztion of the join between l and B-C.</figcaption>
+        </figure>
+        <p>
+So now that calculation is also really short, and as a bonus we don't need l<sub>1</sub> and l<sub>2</sub> anymore.
+Also, we didn't need m<sub>1</sub> and m<sub>2</sub> in the first place.
+        </p>
+      </section>
+      <section>
+        <h3>Putting it all together</h3>
+        <p>
+So now that we have the exact calculations we need, we can put it all together into a function that calculate the point of intersection between two line segments.
+        </p>
+        <figure id="listing6">
+          <pre>
+inline int line_line_intersection(
+  Vec2 a, Vec2 b, // line 0
+  Vec2 c, Vec2 d, // line 1
+  Vec2 *result)
+{
+  auto ab_01 = a.x - b.x;
+  auto ab_20 = a.y - b.y;
+  auto cd_01 = c.x - d.x;
+  auto cd_20 = c.y - d.y;
+  auto ac_01 = a.x - c.x;
+  auto ac_20 = a.y - c.y;
+
+  auto h = cd_20 * ab_01 - cd_01 * ab_20;
+  auto i = cd_20 * ac_01 - cd_01 * ac_20;
+  auto j = ab_20 * ac_01 - ab_01 * ac_20;
+
+  auto s = i / h;
+  auto t = j / h;
+  if (0.0f <= s && s <= 1.0f && 0.0f <= t && t <= 1.0f)
+  {
+    if (result)
+    {
+      *result = lerp(a, b, s);
+    }
+    return 1;
+  }
+  return 0;
+}
+          </pre>
+          <figcaption>Listing 6: The C++ code resulting from the calculations above</figcaption>
+        </figure>
+        <p>
+And here we effectively have the original code, so that's nice.
+Though the way to get there was quite complicated, so I'm sure there is a faster way to come up with this.
+But the good news is that all the steps were just simple formula manipulations, so it was also quite simple from that perspective.
+But my guess is, that starting from the Minkowski Difference, is not ideal and there is a faster way to derive these formulas.
+So a part 3 maybe?
+We'll see.
+        </p>
+      </section>
+
+      <section>
+        <h2>References</h2>
+        <ol>
+<li>https://bivector.net/tools.html</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Changelog</h2>
+        <ul>
+          <li>2021-10-15 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      Last change: <a href="changelog.html">2021-10-15</a>
+    </footer>
+  </body>
+</html>
