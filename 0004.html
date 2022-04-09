@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/rss+xml"  title="Lars' blog RSS" href="rss.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Debugging Scanner Sombre - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="rss.xml" title="rss feed">RSS Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>Debugging Scanner Sombre</h2>
+        <div>First published: <time>2022-04-09</time></div>
+      </header>
+      <section>
+        <p>
+Recently I wanted to replay Introversion Software's colorful cave climbing game <a hred="https://www.introversion.co.uk/scannersombre/">Scanner Sombre</a>.
+But when I tried launching the game it turned out that first some digging was in order, before I could start scanning:
+the game started for a fraction of a second, not even displaying anything before it closed again.
+This was quite surprising, as the game wasn't updated in years and I remembered playing it since then.
+        </p>
+        <p>
+Now that the game apparently wasn't in the mood to run, the first step was to look for any log file that might shed some light on the situation.
+Unfortunately the only log I found just stated that the game finished initializing its sound engine and then cuts off.
+Not very helpful.
+        </p>
+        <p>
+The next step was Windows' Event Viewer.
+As expected, there were a few Errors in the past hour from my failed attempts to launch the game.
+Looking through them, they all reported the game crashing due to an Access Violation.
+So the game tried to read or write memory somewhere it is not allowed to, still not much to go on.
+        </p>
+        <p>
+So far this investigation wasn't going great.
+All I found out so far was that the game was actually crashing and not shutting down voluntarily.
+It was time to get more serious and bust out the <a href="https://x64dbg.com/">debugger</a>.
+Usually, I debug my own software with the luxury of debug builds and symbols.
+This was a big (20MB!), optimized executable with no debug symbols.
+Quite the change of scenery for me.
+So let's just run it until the debugger catches the crash and go from there.
+        </p>
+        <figure id="table0">
+          <pre>
+EXCEPTION_DEBUG_INFO:
+           dwFirstChance: 0
+           ExceptionCode: C0000005 (EXCEPTION_ACCESS_VIOLATION)
+          ExceptionFlags: 00000000
+        ExceptionAddress: 00007FF66E65FFA3 scanner sombre.00007FF66E65FFA3
+        NumberParameters: 2
+ExceptionInformation[00]: 0000000000000000 Read
+ExceptionInformation[01]: FFFFFFFFFFFFFFFF Inaccessible Address
+Last chance exception on 00007FF66E65FFA3 (C0000005, EXCEPTION_ACCESS_VIOLATION)!
+
+       | 00007FF66E65FF76 | 41:0F38C8C9              | sha1nexte xmm1,xmm9                     |
+       | 00007FF66E65FF7B | 66:0F3800FB              | pshufb xmm7,xmm3                        |
+       | 00007FF66E65FF80 | 6641:0FFEC0              | paddd xmm0,xmm8                         |
+       | 00007FF66E65FF85 | 6644:0F6FC9              | movdqa xmm9,xmm1                        |
+       | 00007FF66E65FF8A | 0F85 F0FDFFFF            | jne scanner sombre.7FF66E65FD80         |
+       | 00007FF66E65FF90 | 66:0F70C0 1B             | pshufd xmm0,xmm0,1B                     |
+       | 00007FF66E65FF95 | 66:0F70C9 1B             | pshufd xmm1,xmm1,1B                     |
+       | 00007FF66E65FF9A | F3:0F7F07                | movdqu xmmword ptr ds:[rdi],xmm0        |
+       | 00007FF66E65FF9E | 66:0F7E4F 10             | movd dword ptr ds:[rdi+10],xmm1         |
+<b>RIP -> | 00007FF66E65FFA3 | 0F2870 B8                | movaps xmm6,xmmword ptr ds:[rax-48]     |</b>
+       | 00007FF66E65FFA7 | 0F2878 C8                | movaps xmm7,xmmword ptr ds:[rax-38]     |
+       | 00007FF66E65FFAB | 44:0F2840 D8             | movaps xmm8,xmmword ptr ds:[rax-28]     |
+       | 00007FF66E65FFB0 | 44:0F2848 E8             | movaps xmm9,xmmword ptr ds:[rax-18]     |
+       | 00007FF66E65FFB5 | 48:89C4                  | mov rsp,rax                             |
+       | 00007FF66E65FFB8 | 48:8B7C24 08             | mov rdi,qword ptr ss:[rsp+8]            |
+       | 00007FF66E65FFBD | 48:8B7424 10             | mov rsi,qword ptr ss:[rsp+10]           |
+       | 00007FF66E65FFC2 | F3:C3                    | ret                                     |
+       | 00007FF66E65FFC4 | 90                       | nop                                     |
+       | 00007FF66E65FFC5 | 90                       | nop                                     |
+          </pre>
+          <figcaption>Listing 0: Site of the crash.</figcaption>
+        </figure>
+        <p>
+Quite fitting that the debugger calls the Instruction Pointer "RIP" since this is where the program died.
+Fortunately I have a vague idea what this <code>movaps</code> instruction does: it moves data between memory and a 128-bit register.
+In this case it looks at the memory location stored in the <code>rax</code> register, minus <code>48<sub>hex</sub></code>, and tries to load 16 bytes into the 128-bit <code>xmm6</code> register.
+So there must be some garbage address in <code>rax</code>, right?
+Well, kind of.
+The value in <code>rax</code> is <code>0000000011C8878C<sub>hex</sub></code>, which is the address to valid a memory location with read and write access.
+But looking closer at the instruction, the 'a' in the mnemonic stands for 'aligned'.
+This means, that the memory address must be 16-bit aligned, requiring the lowest 4 bits of the address to be 0.
+However, we can easily see, that the address ends with <code>C<sub>hex</sub></code> which is <code>1100<sub>b</sub></code> in binary.
+        </p>
+        <p>
+Okay, now we understand the immediate cause of the crash, now what?
+Well luckily, there is another instruction called <code>movups</code> with an 'u' for 'unaligned'.
+I guess the aligned version is faster and therefore preferred, but we don't care about performance right now, we care about not crashing.
+And our luck isn't over: the instruction is encoded in the same number of bytes, so replacing it is dead simple.
+So let's replace them and run the game again!
+        </p>
+
+        <figure id="table1">
+          <pre>
+EXCEPTION_DEBUG_INFO:
+           dwFirstChance: 1
+           ExceptionCode: C0000005 (EXCEPTION_ACCESS_VIOLATION)
+          ExceptionFlags: 00000000
+        ExceptionAddress: 00007FF66E65FFC2 scanner sombre.00007FF66E65FFC2
+        NumberParameters: 2
+ExceptionInformation[00]: 0000000000000000 Read
+ExceptionInformation[01]: FFFFFFFFFFFFFFFF Inaccessible Address
+First chance exception on 00007FF66E65FFC2 (C0000005, EXCEPTION_ACCESS_VIOLATION)!
+
+       | 00007FF66E65FF76 | 41:0F38C8C9              | sha1nexte xmm1,xmm9                     |
+       | 00007FF66E65FF7B | 66:0F3800FB              | pshufb xmm7,xmm3                        |
+       | 00007FF66E65FF80 | 6641:0FFEC0              | paddd xmm0,xmm8                         |
+       | 00007FF66E65FF85 | 6644:0F6FC9              | movdqa xmm9,xmm1                        |
+       | 00007FF66E65FF8A | 0F85 F0FDFFFF            | jne scanner sombre.7FF66E65FD80         |
+       | 00007FF66E65FF90 | 66:0F70C0 1B             | pshufd xmm0,xmm0,1B                     |
+       | 00007FF66E65FF95 | 66:0F70C9 1B             | pshufd xmm1,xmm1,1B                     |
+       | 00007FF66E65FF9A | F3:0F7F07                | movdqu xmmword ptr ds:[rdi],xmm0        |
+       | 00007FF66E65FF9E | 66:0F7E4F 10             | movd dword ptr ds:[rdi+10],xmm1         |
+       | 00007FF66E65FFA3 | 0F<b>10</b>70 B8                | mov<b>u</b>ps xmm6,xmmword ptr ds:[rax-48]     |
+       | 00007FF66E65FFA7 | 0F<b>10</b>78 C8                | mov<b>u</b>ps xmm7,xmmword ptr ds:[rax-38]     |
+       | 00007FF66E65FFAB | 44:0F<b>10</b>40 D8             | mov<b>u</b>ps xmm8,xmmword ptr ds:[rax-28]     |
+       | 00007FF66E65FFB0 | 44:0F<b>10</b>48 E8             | mov<b>u</b>ps xmm9,xmmword ptr ds:[rax-18]     |
+       | 00007FF66E65FFB5 | 48:89C4                  | mov rsp,rax                             |
+       | 00007FF66E65FFB8 | 48:8B7C24 08             | mov rdi,qword ptr ss:[rsp+8]            |
+       | 00007FF66E65FFBD | 48:8B7424 10             | mov rsi,qword ptr ss:[rsp+10]           |
+<b>RIP -> | 00007FF66E65FFC2 | F3:C3                    | ret                                     |</b>
+       | 00007FF66E65FFC4 | 90                       | nop                                     |
+       | 00007FF66E65FFC5 | 90                       | nop                                     |
+          </pre>
+          <figcaption>Listing 1: Another crash!</figcaption>
+        </figure>
+        <p>
+Well darn, looks like we weren't that lucky after all, now we crash just a few instructions later on the return instruction.
+Having an access violation here can only mean that the program tries to jump to the wrong address, because someone has corrupted the stack or stack pointer (<code>rsp</code>).
+So what is our stack right now?
+        </p>
+        <figure id="table2">
+          <pre>
+Thread | Address          | To               | From             | Size | Comment                        
+18032  |                  |                  |                  |      |                                
+       | 0000000010EBD4AC | BAADF00D0000003C | 00007FF66E65FFC2 | 8    | scanner sombre.00007FF66E65FFC2
+       | 0000000010EBD4B4 | ABABABABBAADF00D | BAADF00D0000003C | 8    | BAADF00D0000003C               
+       | 0000000010EBD4BC | ABABABABABABABAB | ABABABABBAADF00D | 8    | ABABABABBAADF00D               
+       | 0000000010EBD4C4 | FEEEFEEEABABABAB | ABABABABABABABAB | 8    | ABABABABABABABAB               
+       | 0000000010EBD4CC | 00000000FEEEFEEE | FEEEFEEEABABABAB | 8    | FEEEFEEEABABABAB               
+       | 0000000010EBD4D4 | 0000000000000000 | 00000000FEEEFEEE |      | 00000000FEEEFEEE               
+          </pre>
+          <figcaption>Listing 2: My stack isn't feeling very well.</figcaption>
+        </figure>
+        <p>
+Yeah, that's not right.
+But is that because somebody did some redecorating and painted over the stack memory, or is it the <code>rsp</code> register not actually pointing to the stack?
+Well, we can already see in the disassembly, that the value in <code>rax</code> gets copied to <code>rsp</code>, but that isn't necessarily wrong, compilers love generating weird stuff like that.
+But we already had problems with <code>rax</code> not being aligned, so let's look at the place where it gets its value from.
+        </p>
+        <figure id="table3">
+          <pre>
+00007FF66E65FD7E | 90                       | nop                                     |
+00007FF66E65FD7F | 90                       | nop                                     |
+00007FF66E65FD80 | 48:FFCA                  | dec rdx                                 |
+<b>00007FF66E65FD83 | 48:8D46 40               | lea rax,qword ptr ds:[rsi+40]           | // Here</b>
+00007FF66E65FD87 | 66:0FFECC                | paddd xmm1,xmm4                         |
+00007FF66E65FD8B | 48:0F45F0                | cmovne rsi,rax                          |
+00007FF66E65FD8F | 6644:0F6FC0              | movdqa xmm8,xmm0                        |
+00007FF66E65FD94 | 0F38C9E5                 | sha1msg1 xmm4,xmm5                      |
+          </pre>
+          <figcaption>Listing 3: <code>rax</code> assignment.</figcaption>
+        </figure>
+        <p>
+After scrolling up through the disassembly of a bunch of code doing something with SHA1 related instructions, we come to this <code>lea</code>.
+The mnemonic stands for 'load effective address', even though it doesn't load anything.
+Instead it is a very restrictive but short way to do integer multiplication and addition in one instruction.
+In this case it appears to only do addition to the value in the <code>rsi</code> register and store the result in <code>rax</code>.
+So the hunt continue, what's in <code>rsi</code>?
+        </p>
+
+        <figure id="table4">
+          <pre>
+00007FF66E65FCFE | 90                       | nop                                     |
+00007FF66E65FCFF | 90                       | nop                                     |
+00007FF66E65FD00 | 48:897C24 08             | mov qword ptr ss:[rsp+8],rdi            |
+00007FF66E65FD05 | 48:897424 10             | mov qword ptr ss:[rsp+10],rsi           |
+00007FF66E65FD0A | 48:89E0                  | mov rax,rsp                             |
+00007FF66E65FD0D | 48:89CF                  | mov rdi,rcx                             |
+<b>00007FF66E65FD10 | 48:89D6                  | mov rsi,rdx                             | // Here</b>
+00007FF66E65FD13 | 4C:89C2                  | mov rdx,r8                              |
+00007FF66E65FD16 | 48:8D6424 B8             | lea rsp,qword ptr ss:[rsp-48]           |
+          </pre>
+          <figcaption>Listing 4: <code>rsi</code> assignment.</figcaption>
+        </figure>
+        <p>
+Scrolling a bit farther up, we come to what looks like the typical start of a function: a bunch of <code>nop</code>s above and some <code>mov</code>s that push registers onto the stack.
+If you go back to the <code>ret</code> you can see the code where they are popped back off the stack.
+We also see that <code>rsi</code> is assigned the value from <code>rdi</code>, which is concerning:
+We're at the start of a function and the default calling convention for integer parameters on Windows on AMD64 is to put the first one into <code>rcx</code>, the second into <code>rdx</code>, third into <code>r8</code>, fourth into <code>r9</code> and any other onto the stack.
+So what's happening here is, that the code somewhere along the way confuses a parameter, which is probably a pointer to an output buffer, with the pointer to the stack.
+Programming mistake?
+Compiler bug?
+Undefined behavior?
+Who knows!
+        </p>
+        <p>
+Since I'm not convinced that is function is doing anything important anyway, I'm taking a stab in the dark and just <code>nop</code> out the <code>lea</code> where <code>rsi+40</code> is assigned to <code>rax</code>.
+This should fix both problems we've encountered so far: <code>rax</code> is now correctly aligned for the <code>movaps</code> and the stack pointer will be restored to the correct value before returning.
+        </p>
+        <figure id="table5">
+          <pre>
+00007FF66E65FD7E | 90                       | nop                                     |
+00007FF66E65FD7F | 90                       | nop                                     |
+00007FF66E65FD80 | 48:FFCA                  | dec rdx                                 |
+00007FF66E65FD83 | 90                       | nop                                     |
+00007FF66E65FD84 | 90                       | nop                                     |
+00007FF66E65FD85 | 90                       | nop                                     |
+00007FF66E65FD86 | 90                       | nop                                     |
+00007FF66E65FD87 | 66:0FFECC                | paddd xmm1,xmm4                         |
+00007FF66E65FD8B | 48:0F45F0                | cmovne rsi,rax                          |
+00007FF66E65FD8F | 6644:0F6FC0              | movdqa xmm8,xmm0                        |
+00007FF66E65FD94 | 0F38C9E5                 | sha1msg1 xmm4,xmm5                      |
+          </pre>
+          <figcaption>Listing 5: <code>nop</code>ed out of there.</figcaption>
+        </figure>
+        <p>
+And indeed, after removing this one instruction, the game launched as it should.
+In fact I played through it entirely with no other issues.
+        </p>
+        <p>
+But of course a few questions remain in the dark, waiting for somebody to descend to even deeper disassemblies and shine a light on things.
+Why did it run before?
+Whose code is this?
+How do they render all these points?
+What's the deal with those <code>movaps</code> anyway, they read values from memory that appear to never be used.
+I hope to answer some of these questions an another post.
+        </p>
+      </section>
+
+      <section>
+        <h2>Changelog</h2>
+        <ul>
+          <li>2022-04-09 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      Last change: <a href="changelog.html">2022-04-09</a>
+    </footer>
+  </body>
+</html>
