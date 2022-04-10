@@ -5,10 +5,10 @@
   a:visited {color:#c9f}
 }
 body {
-  font: 1.2em/1.62 sans-serif; /* use system-default sans-serif font */
+  font: 2.686ex sans-serif; /* use system-default sans-serif font */
   margin: 0 auto; /* centers the content */
   max-width: 60em;
-  padding:0 .62em;
+  padding: 0 .62em;
 }
 figure {
   background: rgba(50%,50%,50%,5%);
