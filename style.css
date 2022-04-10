@@ -9,6 +9,7 @@ body {
   margin: 0 auto; /* centers the content */
   max-width: 60em;
   padding: 0 .62em;
+  line-height: 3.13ex;
 }
 figure {
   background: rgba(50%,50%,50%,5%);
