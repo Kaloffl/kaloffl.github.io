@@ -200,7 +200,7 @@ So the hunt continue, what's in <code>rsi</code>?
 Scrolling a bit farther up, we come to what looks like the typical start of a function: a bunch of <code>nop</code>s above and some <code>mov</code>s that push registers onto the stack.
 If you go back to the <code>ret</code> you can see the code where they are popped back off the stack.
 We also see that <code>rsi</code> is assigned the value from <code>rdi</code>, which is concerning:
-We're at the start of a function and the default calling convention for integer parameters on Windows on AMD64 is to put the first one into <code>rcx</code>, the second into <code>rdx</code>, third into <code>r8</code>, fourth into <code>r9</code> and any other onto the stack.
+We're at the start of a function and the <a href="https://docs.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170#parameter-passing">default calling convention for integer parameters on Windows on AMD64</a> is to put the first one into <code>rcx</code>, the second into <code>rdx</code>, third into <code>r8</code>, fourth into <code>r9</code> and any other onto the stack.
 So what's happening here is, that the code somewhere along the way confuses a parameter, which is probably a pointer to an output buffer, with the pointer to the stack.
 Programming mistake?
 Compiler bug?
@@ -244,6 +244,7 @@ I hope to answer some of these questions an another post.
       <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2022-04-10 - Added link for calling convention.</li>
           <li>2022-04-09 - Initial post.</li>
         </ul>
       </section>
