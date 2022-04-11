@@ -5,11 +5,10 @@
   a:visited {color:#c9f}
 }
 body {
-  font: 2.686ex sans-serif; /* use system-default sans-serif font */
+  font: 1.2em/1.62 sans-serif; /* use system-default sans-serif font, the value after the / is the line-height */
   margin: 0 auto; /* centers the content */
   max-width: 60em;
   padding: 0 .62em;
-  line-height: 3.13ex;
 }
 figure {
   background: rgba(50%,50%,50%,5%);
@@ -23,6 +22,10 @@ figcaption {
 pre {
   font-family: monospace;
   padding: 0 1em;
+}
+code {
+  font-family: monospace;
+  font-size: 1.2em; /* monospace fonts tend to be tiny, so we have to give them a boost.  */
 }
 nav {
   background-color: indianred; /* picked on accident, but looks nice */
