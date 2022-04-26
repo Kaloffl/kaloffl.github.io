@@ -325,8 +325,22 @@ Tune in for the next crusade, when some other software doesn't work!
         </p>
       </section>
       <section>
+        <h2>Addendum</h2>
+        <p>
+Ladies and Gentlemen, we've got him!
+Thanks to <a href="https://steamcommunity.com/app/475190/discussions/0/2999920878441544387/?tscn=1650969565#c3274689286970646480">a tip on the steam discussions</a> I found the source of the broken code and can finally rest easy again at night.
+The tip was to set some environment variables to disable certain OpenSSL features.
+It makes sense that OpenSSL would contain hashing functions, and since it is a widely used library, making these functions as efficient as possible by using hardware specific features is certainly a noble act.
+The way they do it in this case is with a lot of handwritten Assembler code, slightly enhanced with some Pearl as a kind of macro language.
+And <a href="https://github.com/openssl/openssl/blob/619b94667cc7a097f6d1e2123c4f4c2c85afb8f7/crypto/sha/asm/sha1-x86_64.pl#L367">this handwritten Assembly</a> does indeed contain the erroneous code.
+It was introduces in 2014, and then <a href="https://github.com/openssl/openssl/commit/7123aa81e9fb19afb11fdf3850662c5f7ff1f19c">fixed</a> in 2016 with the mention of "a crash in SHAEXT code on Windows".
+I'm not entirely sure that this code would have worked on Linux, but the <code>rax</code> register seems to have a slightly different role between platforms, so it's plausible.
+        </p>
+      </section>
+      <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2022-04-26 - Added Addendum.</li>
           <li>2022-04-10 - Initial post.</li>
         </ul>
       </section>
@@ -334,7 +348,7 @@ Tune in for the next crusade, when some other software doesn't work!
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2022-04-10</a>
+      Last change: <a href="changelog.html">2022-04-26</a>
     </footer>
   </body>
 </html>
