@@ -25,7 +25,7 @@
       </header>
       <section>
         <p>
-<a href="0002.html">Last we left of</a>, we had a way to check if two line segments intersect, but other questions like *where* they intersect were left open.
+<a href="0002.html">Last we left off</a>, we had a way to check if two line segments intersect, but other questions like *where* they intersect were left open.
 To get to that answer, we'll first take a closer look at what I wrote at the end of the last article: the Minkowski Difference.
         </p>
       </section>
@@ -38,11 +38,11 @@ In theory, we have infinitely many points that lie on our two line segments, but
         </p>
         <figure id="figure0">
           <pre>
-            C         (A-D)-----(B-D)
-             \             \     \
-A-----B  -    \    =        \ O   \
-               \             \     \
-O           O   D         (A-C)-----(B-C)
+            C         (A-D)─────(B-D)
+             ╲             ╲     ╲
+A─────B  -    ╲    =        ╲ O   ╲
+               ╲             ╲     ╲
+O           O   D         (A-C)─────(B-C)
           </pre>
           <figcaption>Figure 0: Taking the difference of two lines. O indicates the Origin.</figcaption>
         </figure>
@@ -62,12 +62,12 @@ But luckily for us, when we deal with just two lines in 2D, we don't need a fanc
         <h3>Where does he come from, where does he go?</h3>
         <figure id="figure1">
           <pre>
-(A-D)-----(B-D)              |        ---- C
-     \     \                 |       t \    \
-      \ O   \ -----          |          -- A-\---B
-       \     \     \ t       |                \
-    (A-C)-----(B-C) -        |                 D
-        |_|                  |             |_|
+(A-D)─────(B-D)              |        ┌─── C
+     ╲     ╲                 |       t ╲    ╲
+      ╲ O   ╲ ────┐          |          └─ A-╲───B
+       ╲     ╲     ╲ t       |                ╲
+    (A-C)─────(B-C) ┘        |                 D
+        └─┘                  |             └─┘
          s                   |              s
           </pre>
           <figcaption>Figure 1: Locating the Origin inside the shape and the point of intersection between the lines.</figcaption>
@@ -273,6 +273,7 @@ We'll see.
       <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2022-06-07 - Switched from pure ASCII to Unicode box-drawing characters.</li>
           <li>2021-10-15 - Initial post.</li>
         </ul>
       </section>
@@ -280,7 +281,7 @@ We'll see.
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2022-04-26</a>
+      Last change: <a href="changelog.html">2022-06-07</a>
     </footer>
   </body>
 </html>

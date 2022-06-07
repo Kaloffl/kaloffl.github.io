@@ -159,11 +159,11 @@ So let's just stick to computers and algorithms.
         </p>
         <figure id="figure0">
           <pre>
-               A           |           C
-                \          |           |
-                 \         |       B---+-A
-            C---D \        |           |
-                   B       |           D
+               A           │           C
+                ╲          │           │
+                 ╲         │       B───┼─A
+            C───D ╲        │           │
+                   B       │           D
           </pre>
           <figcaption>Figure 0: Two non-intersecting and two intersecting lines, each made of two points A, B and C, D.</figcaption>
         </figure>
@@ -174,11 +174,11 @@ Another way to look at is that we move both line segment so that one of their en
         </p>
         <figure id="figure1">
           <pre>
-(A-B)               |      O-----(B-A)
-     \              |      |
-      \             |      |
-       \            |      |
-        O---(D-C)   |  (D-C)
+(A-B)               │      O─────(B-A)
+     ╲              │      │
+      ╲             │      │
+       ╲            │      │
+        O───(D-C)   │  (D-C)
           </pre>
           <figcaption>Figure 1</figcaption>
         </figure>
@@ -188,11 +188,11 @@ Another way to look at it is, that we add the two differences, ending up with A-
         </p>
         <figure id="figure2">
           <pre>
-(A-B)---(A-B+D-C)   |      O-----(A-B)
-     \   \          |      |     |
-      \   \         |      |     |
-       \   \        |      |     |
-        O---(D-C)   |  (D-C)-----(A-B+D-C)
+(A-B)───(A-B+D-C)   │      O─────(A-B)
+     ╲   ╲          │      │     │
+      ╲   ╲         │      │     │
+       ╲   ╲        │      │     │
+        O───(D-C)   │  (D-C)─────(A-B+D-C)
           </pre>
           <figcaption>Figure 2</figcaption>
         </figure>
@@ -203,11 +203,11 @@ But if they do intersect, as is the case on the right side, A-C will land inside
         </p>
         <figure id="figure3">
           <pre>
-(A-B)---(A-B+D-C)   |      O-----(A-B)
-     \   \ (A-C)    |      |\    |
-      \   X         |      | (A-C)
-       \ / \        |      |     |
-        O---(D-C)   |  (D-C)-----(A-B+D-C)
+(A-B)───(A-B+D-C)   │      O─────(A-B)
+     ╲   ╲ (A-C)    │      │╲    │
+      ╲   ╳         │      │ (A-C)
+       ╲ ╱ ╲        │      │     │
+        O───(D-C)   │  (D-C)─────(A-B+D-C)
           </pre>
           <figcaption>Figure 3</figcaption>
         </figure>
@@ -230,6 +230,7 @@ Cheers!
       <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2022-06-07 - Switched from pure ASCII to Unicode box-drawing characters.</li>
           <li>2021-10-12 - Improved formulations.</li>
           <li>2021-10-10 - Initial post.</li>
         </ul>
@@ -238,7 +239,7 @@ Cheers!
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2022-04-26</a>
+      Last change: <a href="changelog.html">2022-06-07</a>
     </footer>
   </body>
 </html>
