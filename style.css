@@ -17,6 +17,9 @@ figure {
   border-radius: 0.5em;
   overflow: auto;
 }
+figure a {
+  color: white;
+}
 figcaption {
   text-align: center;
 }

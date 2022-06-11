@@ -31,8 +31,8 @@ And while I got the game running again, the question remained: why did it stop w
         <p>
 So far we uncovered, that the game tries to run code that appears to be flat-out broken, which means that this code wasn't executed in the past.
 There are countless possible explanations for this, but we can narrow it down due to an observation I made last time:
-the code executed a bunch of <a href="https://en.wikipedia.org/wiki/SHA-1">SHA1</a> related instructions.
-However, SHA1 instructions were <a href="https://en.wikipedia.org/wiki/Intel_SHA_extensions">just becoming available</a> in 2017 when the game was released, in Intel's Goldmont and AMD's ZEN architecture.
+the code executed a bunch of <a href="https://en.wikipedia.org/wiki/SHA-1" target="_blank">SHA1</a> related instructions.
+However, SHA1 instructions were <a href="https://en.wikipedia.org/wiki/Intel_SHA_extensions" target="_blank">just becoming available</a> in 2017 when the game was released, in Intel's Goldmont and AMD's ZEN architecture.
 On Intel's Core line it took even longer, until Sunny Cove in late 2019, for the SHA1 extension to arrive.
         </p>
         <p>
@@ -49,29 +49,29 @@ And because I didn't show it last time, here's how the stack should look like wh
         </p>
         <figure id="table0">
           <pre>
-Thread │ Address          │ To               │ From             │ Size │ Comment                        
-13500  │                  │                  │                  │      │                               
-       │ 0000000002C3E908 │ 00007FF7D50F67EF │ 00007FF7D515FFC2 │ 30   │ scanner sombre.00007FF7D515FFC2
-       │ 0000000002C3E938 │ 00007FF7D513212E │ 00007FF7D50F67EF │ F0   │ scanner sombre.00007FF7D50F67EF
-       │ 0000000002C3EA28 │ 00007FF7D50CE68F │ 00007FF7D513212E │ 40   │ scanner sombre.00007FF7D513212E
-       │ 0000000002C3EA68 │ 00007FF7D51A1751 │ 00007FF7D50CE68F │ 880  │ scanner sombre.00007FF7D50CE68F
-       │ 0000000002C3F2E8 │ 00007FF7D513252D │ 00007FF7D51A1751 │ 100  │ scanner sombre.00007FF7D51A1751
-       │ 0000000002C3F3E8 │ 00007FF7D50F979F │ 00007FF7D513252D │ 90   │ scanner sombre.00007FF7D513252D
-       │ 0000000002C3F478 │ 00007FF7D50FA922 │ 00007FF7D50F979F │ 100  │ scanner sombre.00007FF7D50F979F
-       │ 0000000002C3F578 │ 00007FF7D50FCBFA │ 00007FF7D50FA922 │ 50   │ scanner sombre.00007FF7D50FA922
-       │ 0000000002C3F5C8 │ 00007FF7D50A7AA2 │ 00007FF7D50FCBFA │ 30   │ scanner sombre.00007FF7D50FCBFA
-       │ 0000000002C3F5F8 │ 00007FF7D510E696 │ 00007FF7D50A7AA2 │ 30   │ scanner sombre.00007FF7D50A7AA2
-       │ 0000000002C3F628 │ 00007FF7D50A9E4D │ 00007FF7D510E696 │ 30   │ scanner sombre.00007FF7D510E696
-       │ 0000000002C3F658 │ 00007FF7D50B135A │ 00007FF7D50A9E4D │ 90   │ scanner sombre.00007FF7D50A9E4D
-       │ 0000000002C3F6E8 │ 00007FF7D50B1DC5 │ 00007FF7D50B135A │ 50   │ scanner sombre.00007FF7D50B135A
-       │ 0000000002C3F738 │ 00007FF7D5097CFB │ 00007FF7D50B1DC5 │ 60   │ scanner sombre.00007FF7D50B1DC5
-       │ 0000000002C3F798 │ 00007FF7D5097E4E │ 00007FF7D5097CFB │ 30   │ scanner sombre.00007FF7D5097CFB
-       │ 0000000002C3F7C8 │ 00007FF7D4936217 │ 00007FF7D5097E4E │ 90   │ scanner sombre.00007FF7D5097E4E
-       │ 0000000002C3F858 │ 00007FF7D4936275 │ 00007FF7D4936217 │ 30   │ scanner sombre.00007FF7D4936217
-       │ 0000000002C3F888 │ 00007FF7D4AC7B38 │ 00007FF7D4936275 │ 30   │ scanner sombre.00007FF7D4936275
-       │ 0000000002C3F8B8 │ 00007FF814027034 │ 00007FF7D4AC7B38 │ 30   │ scanner sombre.00007FF7D4AC7B38
-       │ 0000000002C3F8E8 │ 00007FF815F22651 │ 00007FF814027034 │ 80   │ kernel32.00007FF814027034      
-       │ 0000000002C3F968 │ 0000000000000000 │ 00007FF815F22651 │      │ ntdll.00007FF815F22651         
+Address          │ To               │ From             │ Size │ Comment
+═════════════════╪══════════════════╪══════════════════╪══════╪════════════════════════════════
+0000000002C3E908 │ 00007FF7D50F67EF │ 00007FF7D515FFC2 │ 30   │ scanner sombre.00007FF7D515FFC2
+0000000002C3E938 │ 00007FF7D513212E │ 00007FF7D50F67EF │ F0   │ scanner sombre.00007FF7D50F67EF
+0000000002C3EA28 │ 00007FF7D50CE68F │ 00007FF7D513212E │ 40   │ scanner sombre.00007FF7D513212E
+0000000002C3EA68 │ 00007FF7D51A1751 │ 00007FF7D50CE68F │ 880  │ scanner sombre.00007FF7D50CE68F
+0000000002C3F2E8 │ 00007FF7D513252D │ 00007FF7D51A1751 │ 100  │ scanner sombre.00007FF7D51A1751
+0000000002C3F3E8 │ 00007FF7D50F979F │ 00007FF7D513252D │ 90   │ scanner sombre.00007FF7D513252D
+0000000002C3F478 │ 00007FF7D50FA922 │ 00007FF7D50F979F │ 100  │ scanner sombre.00007FF7D50F979F
+0000000002C3F578 │ 00007FF7D50FCBFA │ 00007FF7D50FA922 │ 50   │ scanner sombre.00007FF7D50FA922
+0000000002C3F5C8 │ 00007FF7D50A7AA2 │ 00007FF7D50FCBFA │ 30   │ scanner sombre.00007FF7D50FCBFA
+0000000002C3F5F8 │ 00007FF7D510E696 │ 00007FF7D50A7AA2 │ 30   │ scanner sombre.00007FF7D50A7AA2
+0000000002C3F628 │ 00007FF7D50A9E4D │ 00007FF7D510E696 │ 30   │ scanner sombre.00007FF7D510E696
+0000000002C3F658 │ 00007FF7D50B135A │ 00007FF7D50A9E4D │ 90   │ scanner sombre.00007FF7D50A9E4D
+0000000002C3F6E8 │ 00007FF7D50B1DC5 │ 00007FF7D50B135A │ 50   │ scanner sombre.00007FF7D50B135A
+0000000002C3F738 │ 00007FF7D5097CFB │ 00007FF7D50B1DC5 │ 60   │ scanner sombre.00007FF7D50B1DC5
+0000000002C3F798 │ 00007FF7D5097E4E │ 00007FF7D5097CFB │ 30   │ scanner sombre.00007FF7D5097CFB
+0000000002C3F7C8 │ 00007FF7D4936217 │ 00007FF7D5097E4E │ 90   │ scanner sombre.00007FF7D5097E4E
+0000000002C3F858 │ 00007FF7D4936275 │ 00007FF7D4936217 │ 30   │ scanner sombre.00007FF7D4936217
+0000000002C3F888 │ 00007FF7D4AC7B38 │ 00007FF7D4936275 │ 30   │ scanner sombre.00007FF7D4936275
+0000000002C3F8B8 │ 00007FF814027034 │ 00007FF7D4AC7B38 │ 30   │ scanner sombre.00007FF7D4AC7B38
+0000000002C3F8E8 │ 00007FF815F22651 │ 00007FF814027034 │ 80   │ kernel32.00007FF814027034      
+0000000002C3F968 │ 0000000000000000 │ 00007FF815F22651 │      │ ntdll.00007FF815F22651         
           </pre>
           <figcaption>Listing 0: Fat stacks!</figcaption>
         </figure>
@@ -82,6 +82,8 @@ Lets see...
         </p>
         <figure id="table1">
           <pre>
+Address          │ Bytes                    │ Disassembly
+═════════════════╪══════════════════════════╪════════════════════════════════════════════════
 00007FF7D50F67DE │ 41:B8 01000000           │ mov r8d,1
 00007FF7D50F67E4 │ 49:8BD4                  │ mov rdx,r12
 00007FF7D50F67E7 │ 48:8BCE                  │ mov rcx,rsi
@@ -109,6 +111,8 @@ Let's take a look at this Dirk fella.
         </p>
         <figure id="table2">
           <pre>
+Address          │ Bytes                    │ Disassembly
+═════════════════╪══════════════════════════╪════════════════════════════════════════════════════
 00007FF7D515EC3D │ CC                       │ int3
 00007FF7D515EC3E │ CC                       │ int3
 00007FF7D515EC3F │ CC                       │ int3
@@ -155,16 +159,18 @@ Those set the zero- and carry-flags, which will then be used by the <code>je, jn
         </p>
         <p>
 But what are they testing?
-In the case of our <code>jne</code> the <code>test</code> instruction checks if bit 29 in <code>r10d</code> (<code>r10</code>s lower 32 bit) is set.
+In the case of our <code>jne</code> the <code>test</code> instruction checks if bit 29 in <code>r10d</code> (<code>r10</code>'s lower 32 bit) is set.
 Looking a few instructions above, we see <code>r10d</code> being assigned a value from memory location <code>7FF7D5B91BB8<sub>hex</sub></code>.
 This location happens to lie in the <code>.data</code> segment of the executable, which means it is a global variable with read and write access.
 Taking a peek at this memory location (and keeping in mind how little-endian works) we see that indeed bit 29 of that value is set:
         </p>
         <figure id="table4">
           <pre>
-00007FF7D5B91BA8 │ 00 00 00 00 00 00 00 00 FF FF EB FF 87 F3 DA FE │ ........ÿÿëÿ.óÚþ  
-00007FF7D5B91BB8 │ <b>AB 27 BF F2</b> 00 00 00 00 00 00 00 00 00 00 00 00 │ «'¿ò............  
-00007FF7D5B91BC8 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................  
+Address          │ Bytes                                           │ <a href="https://en.wikipedia.org/wiki/Windows-1252" target="_blank">Windows-1252</a>
+═════════════════╪═════════════════════════════════════════════════╪═════════════════
+00007FF7D5B91BA8 │ 00 00 00 00 00 00 00 00 FF FF EB FF 87 F3 DA FE │ ........ÿÿëÿ.óÚþ
+00007FF7D5B91BB8 │ <b>AB 27 BF F2</b> 00 00 00 00 00 00 00 00 00 00 00 00 │ «'¿ò............
+00007FF7D5B91BC8 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
           </pre>
           <figcaption>Listing 4</figcaption>
         </figure>
@@ -180,6 +186,8 @@ And just like that, we caught the culprit read-handed:
         </p>
         <figure id="table5">
           <pre>
+Address          │ Bytes                    │ Disassembly
+═════════════════╪══════════════════════════╪═════════════════════════════
 00007FF7D50D886E │ 90                       │ nop
 00007FF7D50D886F │ 90                       │ nop
 00007FF7D50D8870 │ 48:897C24 08             │ mov qword ptr ss:[rsp+8],rdi
@@ -204,6 +212,8 @@ NEXT!
         </p>
         <figure id="table6">
           <pre>
+Address          │ Bytes                    │ Disassembly
+═════════════════╪══════════════════════════╪═════════════════════════════
 00007FF7D50D896C │ B8 07000000              │ mov eax,7
 00007FF7D50D8971 │ 31C9                     │ xor ecx,ecx
 00007FF7D50D8973 │ 0FA2                     │ cpuid
@@ -215,7 +225,7 @@ NEXT!
 This is more like it.
 Stepping through the code and watching the memory location I can see that it is exactly this <code>mov</code> that is writing the values we observed earlier.
 And from the instructions above we see what is being stored:
-the <a href="https://www.felixcloutier.com/x86/cpuid"><code>cpuid</code> instruction</a> stores information about supported CPU features in the <code>eax, ebx, ecx, edx</code> registers.
+the <a href="https://www.felixcloutier.com/x86/cpuid" target="_blank"><code>cpuid</code> instruction</a> stores information about supported CPU features in the <code>eax, ebx, ecx, edx</code> registers.
 Apparently, we're only interested in the <code>ebx</code> part, as that is the only one being committed to memory.
 Now with four times 32 bits you might think that is enough bits, but no!
 There are multiple sets of flags that can be returned by <code>cpuid</code> and you have to set <code>eax</code> and <code>ecx</code> to select which one you want to get.
@@ -257,59 +267,59 @@ Here's the comparison:
         </p>
         <figure id="table8">
           <pre>
-  Scanner Sombre                               Hollow Knight
-
-│ mov qword ptr ss:[rsp+8],rdi               │ mov qword ptr ss:[rsp+8],rdi               │
-│ mov qword ptr ss:[rsp+10],rsi              │ mov qword ptr ss:[rsp+10],rsi              │
-│ mov rax,rsp                                │ mov rax,rsp                                │
-│ mov rdi,rcx                                │ mov rdi,rcx                                │
-│ mov rsi,rdx                                │ mov rsi,rdx                                │
-│ mov rdx,r8                                 │ mov rdx,r8                                 │
-│ lea rsp,qword ptr ss:[rsp-48]              │ lea rsp,qword ptr ss:[rsp-48]              │
-│ movaps xmmword ptr ds:[rax-48],xmm6        │ movaps xmmword ptr ds:[rax-48],xmm6        │
-│ movaps xmmword ptr ds:[rax-38],xmm7        │ movaps xmmword ptr ds:[rax-38],xmm7        │
-│ movaps xmmword ptr ds:[rax-28],xmm8        │ movaps xmmword ptr ds:[rax-28],xmm8        │
-│ movaps xmmword ptr ds:[rax-18],xmm9        │ movaps xmmword ptr ds:[rax-18],xmm9        │
-│ movdqu xmm0,xmmword ptr ds:[rdi]           │ movdqu xmm0,xmmword ptr ds:[rdi]           │
-│ movd xmm1,dword ptr ds:[rdi+10]            │ movd xmm1,dword ptr ds:[rdi+10]            │
-│ movdqa xmm3,xmmword ptr ds:[7FF7D51636E0]  │ movdqa xmm3,xmmword ptr ds:[&lt;sub_7FFF95DEB │
-│ movdqu xmm4,xmmword ptr ds:[rsi]           │ movdqu xmm4,xmmword ptr ds:[rsi]           │
-│ pshufd xmm0,xmm0,1B                        │ pshufd xmm0,xmm0,1B                        │
-│ movdqu xmm5,xmmword ptr ds:[rsi+10]        │ movdqu xmm5,xmmword ptr ds:[rsi+10]        │
-│ pshufd xmm1,xmm1,1B                        │ pshufd xmm1,xmm1,1B                        │
-│ movdqu xmm6,xmmword ptr ds:[rsi+20]        │ movdqu xmm6,xmmword ptr ds:[rsi+20]        │
-│ pshufb xmm4,xmm3                           │ pshufb xmm4,xmm3                           │
-│ movdqu xmm7,xmmword ptr ds:[rsi+30]        │ movdqu xmm7,xmmword ptr ds:[rsi+30]        │
-│ pshufb xmm5,xmm3                           │ pshufb xmm5,xmm3                           │
-│ pshufb xmm6,xmm3                           │ pshufb xmm6,xmm3                           │
-│ movdqa xmm9,xmm1                           │ movdqa xmm9,xmm1                           │
-│ pshufb xmm7,xmm3                           │ pshufb xmm7,xmm3                           │
-│ jmp scanner sombre.7FF7D515FD80            │ jmp unityplayer.7FFF95DE7840               │
-│ nop                                        │ nop                                        │
-│ ...                                        │ ...                                        │
-│ nop                                        │ nop                                        │
-│ dec rdx                                    │ dec rdx                                    │
-│ lea rax,qword ptr ds:[rsi+40]              │ lea r8,qword ptr ds:[rsi+40]               │
-│ paddd xmm1,xmm4                            │ paddd xmm1,xmm4                            │
-│ cmovne rsi,rax                             │ cmovne rsi,r8                              │
-│ movdqa xmm8,xmm0                           │ movdqa xmm8,xmm0                           │
-│ sha1msg1 xmm4,xmm5                         │ sha1msg1 xmm4,xmm5                         │
-│ ...                                        │ ...                                        │
-│ paddd xmm0,xmm8                            │ paddd xmm0,xmm8                            │
-│ movdqa xmm9,xmm1                           │ movdqa xmm9,xmm1                           │
-│ jne scanner sombre.7FF7D515FD80            │ jne unityplayer.7FFF95DE7840               │
-│ pshufd xmm0,xmm0,1B                        │ pshufd xmm0,xmm0,1B                        │
-│ pshufd xmm1,xmm1,1B                        │ pshufd xmm1,xmm1,1B                        │
-│ movdqu xmmword ptr ds:[rdi],xmm0           │ movdqu xmmword ptr ds:[rdi],xmm0           │
-│ movd dword ptr ds:[rdi+10],xmm1            │ movd dword ptr ds:[rdi+10],xmm1            │
-│ movaps xmm6,xmmword ptr ds:[rax-48]        │ movaps xmm6,xmmword ptr ds:[rax-48]        │
-│ movaps xmm7,xmmword ptr ds:[rax-38]        │ movaps xmm7,xmmword ptr ds:[rax-38]        │
-│ movaps xmm8,xmmword ptr ds:[rax-28]        │ movaps xmm8,xmmword ptr ds:[rax-28]        │
-│ movaps xmm9,xmmword ptr ds:[rax-18]        │ movaps xmm9,xmmword ptr ds:[rax-18]        │
-│ mov rsp,rax                                │ mov rsp,rax                                │
-│ mov rdi,qword ptr ss:[rsp+8]               │ mov rdi,qword ptr ss:[rsp+8]               │
-│ mov rsi,qword ptr ss:[rsp+10]              │ mov rsi,qword ptr ss:[rsp+10]              │
-│ ret                                        │ ret                                        │
+Scanner Sombre                             │ Hollow Knight
+═══════════════════════════════════════════╪═══════════════════════════════════════════
+mov qword ptr ss:[rsp+8],rdi               │ mov qword ptr ss:[rsp+8],rdi
+mov qword ptr ss:[rsp+10],rsi              │ mov qword ptr ss:[rsp+10],rsi
+mov rax,rsp                                │ mov rax,rsp
+mov rdi,rcx                                │ mov rdi,rcx
+mov rsi,rdx                                │ mov rsi,rdx
+mov rdx,r8                                 │ mov rdx,r8
+lea rsp,qword ptr ss:[rsp-48]              │ lea rsp,qword ptr ss:[rsp-48]
+movaps xmmword ptr ds:[rax-48],xmm6        │ movaps xmmword ptr ds:[rax-48],xmm6
+movaps xmmword ptr ds:[rax-38],xmm7        │ movaps xmmword ptr ds:[rax-38],xmm7
+movaps xmmword ptr ds:[rax-28],xmm8        │ movaps xmmword ptr ds:[rax-28],xmm8
+movaps xmmword ptr ds:[rax-18],xmm9        │ movaps xmmword ptr ds:[rax-18],xmm9
+movdqu xmm0,xmmword ptr ds:[rdi]           │ movdqu xmm0,xmmword ptr ds:[rdi]
+movd xmm1,dword ptr ds:[rdi+10]            │ movd xmm1,dword ptr ds:[rdi+10]
+movdqa xmm3,xmmword ptr ds:[7FF7D51636E0]  │ movdqa xmm3,xmmword ptr ds:[&lt;sub_7FFF95DEB
+movdqu xmm4,xmmword ptr ds:[rsi]           │ movdqu xmm4,xmmword ptr ds:[rsi]
+pshufd xmm0,xmm0,1B                        │ pshufd xmm0,xmm0,1B
+movdqu xmm5,xmmword ptr ds:[rsi+10]        │ movdqu xmm5,xmmword ptr ds:[rsi+10]
+pshufd xmm1,xmm1,1B                        │ pshufd xmm1,xmm1,1B
+movdqu xmm6,xmmword ptr ds:[rsi+20]        │ movdqu xmm6,xmmword ptr ds:[rsi+20]
+pshufb xmm4,xmm3                           │ pshufb xmm4,xmm3
+movdqu xmm7,xmmword ptr ds:[rsi+30]        │ movdqu xmm7,xmmword ptr ds:[rsi+30]
+pshufb xmm5,xmm3                           │ pshufb xmm5,xmm3
+pshufb xmm6,xmm3                           │ pshufb xmm6,xmm3
+movdqa xmm9,xmm1                           │ movdqa xmm9,xmm1
+pshufb xmm7,xmm3                           │ pshufb xmm7,xmm3
+jmp scanner sombre.7FF7D515FD80            │ jmp unityplayer.7FFF95DE7840
+nop                                        │ nop
+...                                        │ ...
+nop                                        │ nop
+dec rdx                                    │ dec rdx
+lea rax,qword ptr ds:[rsi+40]              │ lea r8,qword ptr ds:[rsi+40]
+paddd xmm1,xmm4                            │ paddd xmm1,xmm4
+cmovne rsi,rax                             │ cmovne rsi,r8
+movdqa xmm8,xmm0                           │ movdqa xmm8,xmm0
+sha1msg1 xmm4,xmm5                         │ sha1msg1 xmm4,xmm5
+...                                        │ ...
+paddd xmm0,xmm8                            │ paddd xmm0,xmm8
+movdqa xmm9,xmm1                           │ movdqa xmm9,xmm1
+jne scanner sombre.7FF7D515FD80            │ jne unityplayer.7FFF95DE7840
+pshufd xmm0,xmm0,1B                        │ pshufd xmm0,xmm0,1B
+pshufd xmm1,xmm1,1B                        │ pshufd xmm1,xmm1,1B
+movdqu xmmword ptr ds:[rdi],xmm0           │ movdqu xmmword ptr ds:[rdi],xmm0
+movd dword ptr ds:[rdi+10],xmm1            │ movd dword ptr ds:[rdi+10],xmm1
+movaps xmm6,xmmword ptr ds:[rax-48]        │ movaps xmm6,xmmword ptr ds:[rax-48]
+movaps xmm7,xmmword ptr ds:[rax-38]        │ movaps xmm7,xmmword ptr ds:[rax-38]
+movaps xmm8,xmmword ptr ds:[rax-28]        │ movaps xmm8,xmmword ptr ds:[rax-28]
+movaps xmm9,xmmword ptr ds:[rax-18]        │ movaps xmm9,xmmword ptr ds:[rax-18]
+mov rsp,rax                                │ mov rsp,rax
+mov rdi,qword ptr ss:[rsp+8]               │ mov rdi,qword ptr ss:[rsp+8]
+mov rsi,qword ptr ss:[rsp+10]              │ mov rsi,qword ptr ss:[rsp+10]
+ret                                        │ ret
           </pre>
           <figcaption>Listing 8: Happy hunting!</figcaption>
         </figure>
@@ -328,18 +338,19 @@ Tune in for the next crusade, when some other software doesn't work!
         <h2>Addendum</h2>
         <p>
 Ladies and Gentlemen, we've got him!
-Thanks to <a href="https://steamcommunity.com/app/475190/discussions/0/2999920878441544387/?tscn=1650969565#c3274689286970646480">a tip on the steam discussions</a> I found the source of the broken code and can finally rest easy again at night.
+Thanks to <a href="https://steamcommunity.com/app/475190/discussions/0/2999920878441544387/?tscn=1650969565#c3274689286970646480" target="_blank">a tip on the steam discussions</a> I found the source of the broken code and can finally rest easy again at night.
 The tip was to set some environment variables to disable certain OpenSSL features.
 It makes sense that OpenSSL would contain hashing functions, and since it is a widely used library, making these functions as efficient as possible by using hardware specific features is certainly a noble act.
 The way they do it in this case is with a lot of handwritten Assembler code, slightly enhanced with some Pearl as a kind of macro language.
-And <a href="https://github.com/openssl/openssl/blob/619b94667cc7a097f6d1e2123c4f4c2c85afb8f7/crypto/sha/asm/sha1-x86_64.pl#L367">this handwritten Assembly</a> does indeed contain the erroneous code.
-It was introduces in 2014, and then <a href="https://github.com/openssl/openssl/commit/7123aa81e9fb19afb11fdf3850662c5f7ff1f19c">fixed</a> in 2016 with the mention of "a crash in SHAEXT code on Windows".
+And <a href="https://github.com/openssl/openssl/blob/619b94667cc7a097f6d1e2123c4f4c2c85afb8f7/crypto/sha/asm/sha1-x86_64.pl#L367" target="_blank">this handwritten Assembly</a> does indeed contain the erroneous code.
+It was introduces in 2014, and then <a href="https://github.com/openssl/openssl/commit/7123aa81e9fb19afb11fdf3850662c5f7ff1f19c" target="_blank">fixed</a> in 2016 with the mention of "a crash in SHAEXT code on Windows".
 I'm not entirely sure that this code would have worked on Linux, but the <code>rax</code> register seems to have a slightly different role between platforms, so it's plausible.
         </p>
       </section>
       <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2022-06-11 - Improved tables, external links now open in new tab.</li>
           <li>2022-06-07 - Switched from pure ASCII to Unicode box-drawing characters.</li>
           <li>2022-04-26 - Added Addendum.</li>
           <li>2022-04-10 - Initial post.</li>
@@ -349,7 +360,7 @@ I'm not entirely sure that this code would have worked on Linux, but the <code>r
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2022-06-07</a>
+      Last change: <a href="changelog.html">2022-06-11</a>
     </footer>
   </body>
 </html>

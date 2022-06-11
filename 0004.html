@@ -31,7 +31,7 @@ Not only do we explore the reason why the crash appeared long after the last gam
       </section>
       <section>
         <p>
-Recently I wanted to replay Introversion Software's colorful cave climbing game <a href="https://www.introversion.co.uk/scannersombre/">Scanner Sombre</a>.
+Recently I wanted to replay Introversion Software's colorful cave climbing game <a href="https://www.introversion.co.uk/scannersombre/" target="_blank">Scanner Sombre</a>.
 But when I tried launching the game it turned out that first some digging was in order, before I could start scanning:
 the game started for a fraction of a second, not even displaying anything before it closed again.
 This was quite surprising, as the game wasn't updated in years and I remembered playing it since then.
@@ -50,7 +50,7 @@ So the game tried to read or write memory somewhere it is not allowed to, still 
         <p>
 So far this investigation wasn't going great.
 All I found out so far was that the game was actually crashing and not shutting down voluntarily.
-It was time to get more serious and bust out the <a href="https://x64dbg.com/">debugger</a>.
+It was time to get more serious and bust out the <a href="https://x64dbg.com/" target="_blank">debugger</a>.
 Usually, I debug my own software with the luxury of debug builds and symbols.
 This was a big (20MB!), optimized executable with no debug symbols.
 Quite the change of scenery for me.
@@ -68,6 +68,8 @@ ExceptionInformation[00]: 0000000000000000 Read
 ExceptionInformation[01]: FFFFFFFFFFFFFFFF Inaccessible Address
 Last chance exception on 00007FF66E65FFA3 (C0000005, EXCEPTION_ACCESS_VIOLATION)!
 
+       │ Address          │ Bytes                    │ Disassembly
+═══════╪══════════════════╪══════════════════════════╪═════════════════════════════════════
        │ 00007FF66E65FF76 │ 41:0F38C8C9              │ sha1nexte xmm1,xmm9
        │ 00007FF66E65FF7B │ 66:0F3800FB              │ pshufb xmm7,xmm3
        │ 00007FF66E65FF80 │ 6641:0FFEC0              │ paddd xmm0,xmm8
@@ -121,6 +123,8 @@ ExceptionInformation[00]: 0000000000000000 Read
 ExceptionInformation[01]: FFFFFFFFFFFFFFFF Inaccessible Address
 First chance exception on 00007FF66E65FFC2 (C0000005, EXCEPTION_ACCESS_VIOLATION)!
 
+       │ Address          │ Bytes                    │ Disassembly
+═══════╪══════════════════╪══════════════════════════╪═════════════════════════════════════
        │ 00007FF66E65FF76 │ 41:0F38C8C9              │ sha1nexte xmm1,xmm9
        │ 00007FF66E65FF7B │ 66:0F3800FB              │ pshufb xmm7,xmm3
        │ 00007FF66E65FF80 │ 6641:0FFEC0              │ paddd xmm0,xmm8
@@ -150,14 +154,14 @@ So what is our stack right now?
         </p>
         <figure id="table2">
           <pre>
-Thread │ Address          │ To               │ From             │ Size │ Comment                        
-18032  │                  │                  │                  │      │                                
-       │ 0000000010EBD4AC │ BAADF00D0000003C │ 00007FF66E65FFC2 │ 8    │ scanner sombre.00007FF66E65FFC2
-       │ 0000000010EBD4B4 │ ABABABABBAADF00D │ BAADF00D0000003C │ 8    │ BAADF00D0000003C               
-       │ 0000000010EBD4BC │ ABABABABABABABAB │ ABABABABBAADF00D │ 8    │ ABABABABBAADF00D               
-       │ 0000000010EBD4C4 │ FEEEFEEEABABABAB │ ABABABABABABABAB │ 8    │ ABABABABABABABAB               
-       │ 0000000010EBD4CC │ 00000000FEEEFEEE │ FEEEFEEEABABABAB │ 8    │ FEEEFEEEABABABAB               
-       │ 0000000010EBD4D4 │ 0000000000000000 │ 00000000FEEEFEEE │      │ 00000000FEEEFEEE               
+Address          │ To               │ From             │ Size │ Comment                        
+═════════════════╪══════════════════╪══════════════════╪══════╪════════════════════════════════
+0000000010EBD4AC │ BAADF00D0000003C │ 00007FF66E65FFC2 │ 8    │ scanner sombre.00007FF66E65FFC2
+0000000010EBD4B4 │ ABABABABBAADF00D │ BAADF00D0000003C │ 8    │ BAADF00D0000003C               
+0000000010EBD4BC │ ABABABABABABABAB │ ABABABABBAADF00D │ 8    │ ABABABABBAADF00D               
+0000000010EBD4C4 │ FEEEFEEEABABABAB │ ABABABABABABABAB │ 8    │ ABABABABABABABAB               
+0000000010EBD4CC │ 00000000FEEEFEEE │ FEEEFEEEABABABAB │ 8    │ FEEEFEEEABABABAB               
+0000000010EBD4D4 │ 0000000000000000 │ 00000000FEEEFEEE │      │ 00000000FEEEFEEE               
           </pre>
           <figcaption>Listing 2: My stack isn't feeling very well.</figcaption>
         </figure>
@@ -169,6 +173,9 @@ But we already had problems with <code>rax</code> not being aligned, so let's lo
         </p>
         <figure id="table3">
           <pre>
+
+Address          │ Bytes                    │ Disassembly
+═════════════════╪══════════════════════════╪════════════════════════════════════════
 00007FF66E65FD7E │ 90                       │ nop
 00007FF66E65FD7F │ 90                       │ nop
 00007FF66E65FD80 │ 48:FFCA                  │ dec rdx
@@ -190,6 +197,8 @@ So the hunt continue, what's in <code>rsi</code>?
 
         <figure id="table4">
           <pre>
+Address          │ Bytes                    │ Disassembly
+═════════════════╪══════════════════════════╪══════════════════════════════
 00007FF66E65FCFE │ 90                       │ nop
 00007FF66E65FCFF │ 90                       │ nop
 00007FF66E65FD00 │ 48:897C24 08             │ mov qword ptr ss:[rsp+8],rdi
@@ -206,7 +215,7 @@ So the hunt continue, what's in <code>rsi</code>?
 Scrolling a bit farther up, we come to what looks like the typical start of a function: a bunch of <code>nop</code>s above and some <code>mov</code>s that push registers onto the stack.
 If you go back to the <code>ret</code> you can see the code where they are popped back off the stack.
 We also see that <code>rsi</code> is assigned the value from <code>rdi</code>, which is concerning:
-We're at the start of a function and the <a href="https://docs.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170#parameter-passing">default calling convention for integer parameters on Windows on AMD64</a> is to put the first one into <code>rcx</code>, the second into <code>rdx</code>, third into <code>r8</code>, fourth into <code>r9</code> and any other onto the stack.
+We're at the start of a function and the <a href="https://docs.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170#parameter-passing" target="_blank">default calling convention for integer parameters on Windows on AMD64</a> is to put the first one into <code>rcx</code>, the second into <code>rdx</code>, third into <code>r8</code>, fourth into <code>r9</code> and any other onto the stack.
 So what's happening here is, that the code somewhere along the way confuses a parameter, which is probably a pointer to an output buffer, with the pointer to the stack.
 Programming mistake?
 Compiler bug?
@@ -219,6 +228,8 @@ This should fix both problems we've encountered so far: <code>rax</code> is now 
         </p>
         <figure id="table5">
           <pre>
+Address          │ Bytes                    │ Disassembly
+═════════════════╪══════════════════════════╪═══════════════════
 00007FF66E65FD7E │ 90                       │ nop
 00007FF66E65FD7F │ 90                       │ nop
 00007FF66E65FD80 │ 48:FFCA                  │ dec rdx
@@ -250,6 +261,7 @@ I hope to answer some of these questions an another post.
       <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2022-06-11 - Improved tables, external links now open in new tab.</li>
           <li>2022-06-07 - Switched from pure ASCII to Unicode box-drawing characters.</li>
           <li>2022-04-26 - Added link to second post.</li>
           <li>2022-04-10 - Fixed broken link.</li>
@@ -261,7 +273,7 @@ I hope to answer some of these questions an another post.
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2022-06-07</a>
+      Last change: <a href="changelog.html">2022-06-11</a>
     </footer>
   </body>
 </html>
