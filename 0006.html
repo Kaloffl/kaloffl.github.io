@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/rss+xml"  title="Lars' blog RSS" href="rss.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>How not to intercept a PWM signal - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="rss.xml" title="rss feed">RSS Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>How not to intercept a PWM signal</h2>
+        <div>First published: <time>2022-06-12</time></div>
+      </header>
+      <section>
+        <p>
+Recently I was put in charge of a computerified 1:8 model RC car that is used in workshops to teach autonomous driving and machine learning concepts.
+But not only can this little car drive autonomously, it can also be driven with a traditional radio control!
+(Which workshop participants are sometimes way more interested in than autonomous driving.)
+        </p>
+        <p>
+In this article I'll focus on one specific quirk I investigated and fixed: every now and then the car would start twitching for no apparent reason and stop again after a while.
+By 'twitching' I mean it would shake its steerable front wheels and give small pulses with it's electrical motor.
+While the shaking wasn't very severe and didn't worsen the driving performance too much, it was still quite audible and would look especially strange when the car was supposed to stand still.
+By 'no apparent reason' I mean that it happened when steered via the radio control, during autonomous driving via software and also while parking.
+        </p>
+      </section>
+      <section>
+        <h2>The System</h2>
+        <p>
+Before we get into the debugging process, I'll take a moment to elaborate on the system architecture of the car.
+While based on a off-the-shelf 1:8 electric model car, a bunch of electronics have been added:
+        </p>
+        <ul>
+          <li>In the center of it all sits a Mini-ITX based computer running Linux.</li>
+          <li>Spread around the car are a few Arduino Micro boards.</li>
+          <li>One of these a hooked up to the radio receiver as well as the steering servo and motor driver.</li>
+          <li>PD2 and PD3 are used to read the radio signal, PD6 and PC7 are used to control the motor and steering.</li>
+          <li>Even in remote-control-mode the radio signal makes a round-trip through the Linux PC and back to the Arduino.</li>
+          <li>There are also a LIDAR, cameras, and some more sensors that aren't relevant here.</li>
+          <li>Everything is connected to the Linux computer via USB.</li>
+        </ul>
+        <p>
+And here's a diagram because I like love <a href="https://en.wikipedia.org/wiki/Box_Drawing" target="_blank">box drawing characters</a>:
+        </p>
+        <figure id="figure0">
+          <pre>
+╔══════════════╗     ╔══════════════╗        ╔═══════════╗       ╔════════════════╗
+║   Linux PC   ║     ║   USB Hub    ║        ║  Arduino  ║       ║ Radio Receiver ║
+╟──────────────╢     ╟──────────────╢        ╟───────────╢       ╟────────────────╢
+║              ║     ║              ║        ║        PD2╫──PWM──╫Throttle        ║
+║              ║     ║              ║        ║           ║       ║                ║
+║              ║     ║              ║        ║        PD3╟──PWM──╫Steering        ║
+║              ║     ║              ║        ║           ║       ╚════════════════╝
+║              ║     ║              ║        ║           ║
+║              ║     ║              ║        ║           ║       ╔════════════════╗
+║           USB╫─────╫USB        USB╫──UART──╫USB     PD6╫──PWM──╢ Motor Driver   ║
+║              ║     ║              ║        ║           ║       ╚════════════════╝
+║              ║     ║              ║        ║           ║
+║              ║     ║              ║        ║           ║       ╔════════════════╗
+║              ║     ║              ║        ║        PC7╫──PWM──╢ Steering Servo ║
+║              ║     ║              ║        ╚═══════════╝       ╚════════════════╝
+║              ║     ║              ║
+║              ║     ║              ║        ╔═══════════╗
+║              ║     ║           USB╫────────╢ ...       ║
+║              ║     ╚══════════════╝        ╚═══════════╝
+║              ║
+║              ║     ╔══════════════╗
+║           USB╫─────╢ LIDAR        ║
+║              ║     ╚══════════════╝
+║              ║
+║              ║     ╔══════════════╗
+║           USB╫─────╢ ...          ║
+╚══════════════╝     ╚══════════════╝
+          </pre>
+          <figcaption>Figure 0: System overview</figcaption>
+        </figure>
+      </section>
+      <section>
+        <h2>Pulse Width Modulation</h2>
+        <p>
+While we're at introductions, let's also quickly go over PWM, especially as it is used for RC cars.
+A really useful tool to understand PWM is an oscilloscope (well, a logic analyzer might be enough), so let's pretend we have one:
+        </p>
+        <figure id="figure1">
+          <pre>
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║ LarTronix         1ms/div       4V/div         166.7Hz                                ║
+╟───────────────────────────────────────────────────────────────────────────────────────╢
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ├───────────┤   ·       ·       ·       ·       ├───────────┤   ·       ║
+║· · · · · · · ·│· · · · · ·│· · · · · · · · · · · · · · · · · ·│· · · · · ·│· · · · · ·║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·   │   ·       ║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·   │   ·       ║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·   │   ·       ║
+║Steering ) ────┤· · · · · ·├───────────────────────────────────┤· · · · · ·├───────────║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║· · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · ·║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ├───────────┤   ·       ·       ·       ·       ├───────────┤   ·       ║
+║· · · · · · · ·│· · · · · ·│· · · · · · · · · · · · · · · · · ·│· · · · · ·│· · · · · ·║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·   │   ·       ║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·   │   ·       ║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·   │   ·       ║
+║Throttle ) ────┤· · · · · ·├───────────────────────────────────┤· · · · · ·├───────────║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+          </pre>
+          <figcaption>Figure 1: a nice little PWM waveform</figcaption>
+        </figure>
+        <p>
+What we have in fig. 1 is what you should see when you connect an oscilloscope to two of the PWM related pins on the Arduino.
+Time goes from left to right, each grid cell being 0.001s, so the "high" part of the signal is 1.5ms long.
+The shape of the signal repeats after 6ms, which is an exaggeration on my part to make it easier to visualize, the real "period" of the signal was 16.67ms.
+Oftentimes with PWM, we want to know the "duty cycle" which is the length the signal was "high" relative to the length of the period.
+With RC cars (and planes, drones, ...) a different convention is used: 1.5ms is defined to be "neutral" and this time is reduced or increased by up to 500µs to drive forward and backward or steer left right right.
+So this is what we get when turning the radio controllers steering wheel all the way to the left, giving full throttle and watching pin PD3 and PD2 on the Arduino: 
+        </p>
+        <figure id="figure2">
+          <pre>
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║ LarTronix         1ms/div       4V/div         166.7Hz                                ║
+╟───────────────────────────────────────────────────────────────────────────────────────╢
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ├───────┤       ·       ·       ·       ·       ├───────┤       ·       ║
+║· · · · · · · ·│· · · ·│· · · · · · · · · · · · · · · · · · · ·│· · · ·│· · · · · · · ·║
+║       ·       │       │       ·       ·       ·       ·       │       │       ·       ║
+║       ·       │       │       ·       ·       ·       ·       │       │       ·       ║
+║       ·       │       │       ·       ·       ·       ·       │       │       ·       ║
+║Steering ) ────┤· · · ·├───────────────────────────────────────┤· · · ·├───────────────║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║· · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · · ·║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ├───────────────┤       ·       ·       ·       ├───────────────┤       ║
+║· · · · · · · ·│· · · · · · · ·│· · · · · · · · · · · · · · · ·│· · · · · · · ·│· · · ·║
+║       ·       │       ·       │       ·       ·       ·       │       ·       │       ║
+║       ·       │       ·       │       ·       ·       ·       │       ·       │       ║
+║       ·       │       ·       │       ·       ·       ·       │       ·       │       ║
+║Throttle ) ────┤· · · · · · · ·├───────────────────────────────┤· · · · · · · ·├───────║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+          </pre>
+          <figcaption>Figure 2: steering to the left</figcaption>
+        </figure>
+        <p>
+The only thing that changes is the distance between the rising and falling edge, while the period remains unchanged.
+Had we turned the steering wheel the other way, the edges would go further apart to 2ms.
+Of course many steps in between these values are also possible to get smooth steering and throttle control.
+        </p>
+      </section>
+      <section>
+        <h2>Microcontrolling</h2>
+        <p>
+How do we work with such a PWM signal?
+In general, your average microcontroller offers a bunch of options to deal with PWM signals and the <a href="https://www.microchip.com/en-us/product/ATmega32U4" target="_blank">AtMege32U4</a> on the Arduino Micro is no different.
+However, these options are bound to specific pins, so let's see what we can use on PD2 and PD3 as inputs.
+        </p>
+        <figure id="figure3">
+          <pre>
+                              ┌────┐
+                          ╔═══╡USB ╞═══╗
+OC4A | CLKO | ICP3 | PC7 ─╫13 └┬┬┬┬┘ 12╫─ PD6 | T1   | !OC4D |        | ADC9
+                3.3V out ─╫          11╫─ PB7 | OC0A |  OC1C | PCINT7 | !RTS
+                    AREF ─╫          10╫─ PB6 | OC1B |  OC4B | PCINT6 | ADC13
+        TDI | ADC7 | PF7 ─╫A0  ┌──┐   9╫─ PB5 | OC1A | !OC4B | PCINT5 | ARC12
+        TDO | ADC6 | PF6 ─╫A1  └──┘   8╫─ PB4 |      |       | PCINT4 | ADC11
+        TMS | ADC5 | PF5 ─╫A2         7╫─ PE6 |      |       | INT6   | AIN0
+        TCK | ADC4 | PF4 ─╫A3 ┌────┐  6╫─ PD7 | T0   |  OC4D |        | ADC10
+              ADC1 | PF1 ─╫A4 │MEGA│  5╫─ PC6 | OC3A | !OC4A |        |
+              ADC0 | PF0 ─╫A5 │32U4│  4╫─ PD4 | ICP1 |       |        | ADC8
+                    n.c. ─╫   └────┘  3╫─ PD0 | SCL  |  OC0B | !INT0
+                    n.c. ─╫           2╫─ PD1 | SDA  |       | !INT1
+                  5V out ─╫      ┌──┐  ╫─ GND
+                   Reset ─╫      ╞══╡  ╫─ Reset
+                     GND ─╫      └──┘ 0╫─ PD2 | RXD1 |       | !INT2
+                     Vin ─╫  oo  ┌┴┴┐ 1╫─ PD3 | TXD1 |       | !INT3
+      PCINT3 | PDO | PB3 ─╫  oo  │()│  ╫─ PB0 | !SS  |       | PCINT0
+      PCINT1 | SCK | PB1 ─╫  oo  └┬┬┘  ╫─ PB2 | PDI  | MOSI  | PCINT2
+                          ╚════════════╝
+          </pre>
+          <figcaption>Figure 3: Arduino Micro pinout</figcaption>
+        </figure>
+        <p>
+There are not many functions on these pins: <code>RX/TXD1</code> are for serial communications, which we don't need here.
+The other option is much more promising: set up the external interrupts on these pins to trigger whenever the logical level changes between high and low.
+We will also need a way to get the current time while inside the interrupt, but Arduino already offers the <a href="https://www.arduino.cc/reference/en/language/functions/time/micros/" target="_blank"><code>micros()</code></a> function for that.
+With interrupts we should be careful to do as little work as possible, because the AtTMega32U4 does not support nested interrupts.
+This means that while the program is inside an interrupt and the conditions for another, more important interrupt arise, the fist one still has to complete before the next one can start.
+        </p>
+        <p>
+So much for reading in PWM signals, how about outputting them?
+For that we have to look at PC6 and PD7, which offer multiple "output compare" modes.
+Output compare is perfect to create a PWM signal: there is a counter constantly going up towards some maximum value where it is reset to 0 and the output pin is set high.
+Additionally there is a compare value.
+When the counter reaches the compare value, the output pin is set low.
+The result: a PWM waveform that can be configured by setting the compare value.
+        </p>
+        <p>
+If we want to produce a 6ms long signal where the first 1.5ms are high and know that the counter runs at 16MHz, then it should set the output low at 24000 and reset at 96000 counts.
+These values a a bit too large for this poor 8-bit chip, so we can use a prescaler to reduce the counter frequency and therefore the compare and reset values.
+But that's enough about microcontrollers for now, let's finally get back to the car!
+        </p>
+      </section>
+      <section>
+        <h2>Problem analysis</h2>
+        <p>
+So here's the situation: we have the twitching car, signals going form the radio controller to the receiver, through the Arduino, through an USB cable to the Linux PC, through some convoluted software, back through the USB cable, through the Arduino, to the motor and servo.
+        </p>
+        <p>
+That's a lot of potential failure points, so let's start somewhere.
+To get a better picture of how severe this problem is I started where I was pretty sure to find a bad signal: between the Arduino and the servo.
+With a scope and a few wired I found this: 
+        </p>
+        <figure id="figure4">
+          <pre>
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║ LarTronix         1ms/div       4V/div         166.7Hz          Δt: 1.58ms            ║
+╟───────────────────────────────────────────────────────────────────────────────────────╢
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·    ┆  ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·    ┆  ·       ║
+║       ·       ├───────────┤   ·       ·       ·       ·       ├────────────┤  ·       ║
+║· · · · · · · ·│· · · · · ·│· · · · · · · · · · · · · · · · · ·│· · · · · · │ · · · · ·║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·    │  ·       ║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·    │  ·       ║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·    │  ·       ║
+║Steering ) ────┤· · · · · ·├───────────────────────────────────┤· · · · · · ├──────────║
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·    ┆  ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·    ┆  ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·    ┆  ·       ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+          </pre>
+          <figcaption>Figure 4: the HTML blink tag would have been perfect for this!</figcaption>
+        </figure>
+        <p>
+The car was supposed to be completely neutral, outputting an 1.5ms signal.
+What I found was that this was true most of the time, but occasionally the signal was around 80µs longer than it should be.
+As expected, these incorrect timings exactly matched when the car was twitching around.
+        </p>
+        <p>
+While I'm at it I might as well probe the input side.
+Maybe there is a problem with the radio control or receiver.
+        </p>
+        <figure id="figure5">
+          <pre>
+╔═══════════════════════════════════════════════════════════════════════════════════════╗
+║ LarTronix         1ms/div       4V/div         166.7Hz          Δt: 1.5ms             ║
+╟───────────────────────────────────────────────────────────────────────────────────────╢
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·   ┆   ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·   ┆   ·       ║
+║       ·       ├───────────┤   ·       ·       ·       ·       ├───────────┤   ·       ║
+║· · · · · · · ·│· · · · · ·│· · · · · · · · · · · · · · · · · ·│· · · · · ·│· · · · · ·║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·   │   ·       ║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·   │   ·       ║
+║       ·       │       ·   │   ·       ·       ·       ·       │       ·   │   ·       ║
+║Steering ) ────┤· · · · · ·├───────────────────────────────────┤· · · · · ·├───────────║
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·   ┆   ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·   ┆   ·       ║
+║       ·       ·       ·       ·       ·       ·       ·       ┆       ·   ┆   ·       ║
+╚═══════════════════════════════════════════════════════════════════════════════════════╝
+          </pre>
+          <figcaption>Figure 5: nope</figcaption>
+        </figure>
+        <p>
+Then let's see what is going over this serial connection, maybe we find something suspicious there...
+        </p>
+        <figure id="figure6">
+          <pre>
+...
+In: 0x5A 0x5A
+Out: 0x5A 0x5A
+In: 0x5A 0x5A
+Out: 0x5A 0x5A
+In: 0x5A 0x5A
+Out: 0x5A 0x5A
+In: 0x5A 0x5A
+Out: 0x5A 0x5A
+In: 0x5A 0x5A
+Out: 0x5A 0x5A
+In: 0x5A 0x5A
+Out: 0x5A 0x5A
+...
+          </pre>
+          <figcaption>Figure 6</figcaption>
+        </figure>
+        <p>
+Nothing to see here...
+Other than the fact that apparently 90<sub>10</sub> is the neutral value, instead of 80, as you might expect from a single byte (or y'know using a signed byte with 0 being neutral).
+        </p>
+        <p>
+So it seems that the Arduino is getting the same input over and over again, but is somehow creating different outputs.
+Time to dig into the sourcecode and find out out more.
+        </p>
+      </section>
+      <section>
+        <h2>Inside the heart of darkness</h2>
+        <p>
+Let's try to figure out the path of the signal from serial to PWM, maybe there is something obvious in there.
+        </p>
+        <figure id="listing0">
+          <pre>
+...
+int16_t cmdSteering;
+int16_t cmdDrive;
+...
+Servo servo_steering;
+Servo servo_speed;
+...
+void setup() {
+  ...
+  servo_steering.attach(PIN_STEER_SERV);
+  servo_speed.attach(PIN_SPEED_CONTR);
+
+  servo_steering.write(90);
+  servo_speed.write(90);
+  ...
+}
+...
+void update() {
+  ...
+  cmdDrive    = Serial.read();
+  cmdSteering = Serial.read();
+  ...
+  servo_steering.write(cmdSteering);
+  servo_speed.write(cmdDrive);
+}
+...
+          </pre>
+          <figcaption>Listing 0</figcaption>
+        </figure>
+        <p>
+I left out a lot here but this is ultimately it: the values are read in and passed to some instances of a class called Servo.
+Even though these variables are global, nobody else is modifying them, at least on purpose.
+It's hope that we're not dealing with some out-of-bounds write that messes with these values...
+        </p>
+        <p>
+Okay, what is this Servo class?
+Turns out it is a default <a href="https://github.com/arduino-libraries/Servo" target="_blank">Arduino library</a> for creating PWM signals on any GPIO pin.
+Wait, any pin?
+But there aren't timer connected to every pin.
+Oh no!
+        </p>
+        <p>
+Okay, that's not quite true, the timers are connected to every pin.
+It is just the case that these connections take an unfortunate route: straight through the CPU via the timer interrupt.
+This library just sets up a timer to periodically fire an interrupt and checks if some GPIO pins should be toggled.
+The upside is that you can pretty much use any GPIO pin and are not bound by the whims of whoever decided on the pin alternate modes.
+The downside is that you have to go through the CPU, while the output compare could work independently.
+And if the CPU is busy with some other interrupt, this one will have to wait and flip the pin too late, causing the 80µs delay we observed.
+        </p>
+        <p>
+That is quite the footgun to put into an innocent sounding library for hobbyists that probably haven't taken a course in realtime systems.
+        </p>
+        <p>
+But having an 80µs interrupt is quite a lot: at 16MHz that's 1280 cycles, you have to screw up a lot to use this many cycles.
+Who is doing this screwing in an upwards direction?
+You might have guessed it: the interrupts for reading the PWM signals.
+This also explains why the twitching behavior seems to drift in and out: both the radio receiver as well as the Arduino try to produce a signal with the same frequency, but since they run on different clocks, slight timing differences make them shift in and out of phase.
+        </p>
+        <figure id="listing1">
+          <pre>
+...
+volatile int rcSteering;
+volatile uint32_t steeringHighTime;
+volatile uint32_t steeringLowTime;
+volatile int rcDrive;
+volatile uint32_t driveHighTime;
+volatile uint32_t driveLowTime;
+...
+void setup() {
+  ...
+  pinMode(1, INPUT);
+  attachInterrupt(3, interupt_rcDrive, CHANGE); 
+
+  pinMode(0, INPUT);
+  attachInterrupt(2, interupt_rcSteering, CHANGE);
+  ...
+}
+...
+void interupt_rcDrive() {
+  if (digitalRead(1)) {
+    long currentTime =  micros(); 
+    rcDrive = (1000 * (driveLowTime - driveHighTime)) / (currentTime - driveHighTime);
+    driveHighTime = currentTime;
+  } else {
+    driveLowTime = micros();
+  }
+}
+
+void interupt_rcSteering() {
+  // pretty much the same as above
+}
+...
+void update() {
+  ...
+  Serial.write(rcDrive);
+  Serial.write(rcSteering);
+  ...
+}
+...
+          </pre>
+          <figcaption>Listing 1</figcaption>
+        </figure>
+        <p>
+It took me a while to comprehend what was happening in this interrupt (note that you get to see the cleaned up version).
+The <code>else</code> branch is quite uninteresting, so let's focus on what happens when <code>digitalRead(1)</code> returns true.
+The code is juggling three timestamps: <code>driveHighTime</code> when the signal last went high, <code>driveLowTime</code> when the signal goes low and finally <code>currentTime</code> is the current time where the signal went high.
+With these timestamps two durations are calculated: <code>driveLowTime - driveHighTime</code> is how many µs the signal was high for and <code>currentTime - driveHighTime</code> is the length of the entire signal in µs.
+The first duration is then divided by the second to get the duty-cycle, and then there's a multiplication by 1000 in there for good measure, since everything uses integers.
+        </p>
+        <p>
+Okay, as mentioned earlier, RC equipment cares about timing, not duty-cycles, so if for some reasind the period changes, e.g. because we changed the radio receiver, the code might not work anymore.
+But the much much bigger problem is the division operation.
+I'm sure you've already heard that "divisions are expensive".
+And while the truth of that statement heavily depends on the circumstances, here it is almost an understatement.
+The problem is, that this code is asking an 8-bit CPU that can barely do multiplications to do a division of two 32-bit variables.
+Since both sides of the operation are variables, there is also no chance that the compiler could do any smart optimizations to make this less of a disaster.
+<a href="https://godbolt.org/z/n8de1TG4Y" target="_blank">Here's a link</a> that shows how bad just one of these interrupts is.
+Though it doesn't even show the full extend because the <a href="https://github.com/gcc-mirror/gcc/blob/master/libgcc/config/avr/lib1funcs.S#L621" target="_blank">multiplication</a> and <a href="https://github.com/gcc-mirror/gcc/blob/master/libgcc/config/avr/lib1funcs.S#L1633" target="_blank">division</a> functions is just called and not shown. 
+        </p>
+      </section>
+      <section>
+        <h2>Could you just not...</h2>
+        <p>
+... do 99% of this work in the ISR?
+Why yes you could!
+All we really care about is the timestamp, any calculation can be done later outside the ISR.
+So all we need is this:
+        </p>
+        <figure id="listing2">
+          <pre>
+...
+int16_t rcDrive;
+volatile uint32_t driveHighTime;
+volatile uint32_t driveLowTime;
+...
+void interupt_rcDrive() {
+  if (digitalRead(1)) {
+    driveHighTime = micros();
+    driveLowTime  = 0;
+  } else {
+    driveLowTime = micros();
+  }
+}
+...
+          </pre>
+          <figcaption>Listing 2</figcaption>
+        </figure>
+        <p>
+Here the low time is set to 0 on a rising edge, so the outside code knows that a new measurement is in progress and the numbers aren't ready yet.
+This makes some assumptions about the other code that reads the timestamps, for example that it doesn't happen to always read <code>driveLowTime</code> when it is 0.
+But in practice this worked perfectly so far.
+Speaking of the reading code:
+        </p>
+        <figure id="listing3">
+          <pre>
+...
+uint8_t rcDrive;
+volatile uint32_t driveHighTime;
+volatile uint32_t driveLowTime;
+...
+void update() {
+  ...
+  // Temporarily disable interrupts while we read the variables they touch.
+  cli();
+  if (driveLowTime) {
+    // The high time is expected to be between 1000µs and 2000µs, for which a signed 16-bit
+    // variable has plenty of space.
+    int16_t high_us = int16_t(driveLowTime - driveHighTime);
+    sei();
+
+    // 1500µs is the neutral point, deviations up to +-512 are expected.
+    int16_t deviation_us = high_us - 1500;
+    if (deviation_us < -512) deviation_us = -512;
+    if ( 512 < deviation_us) deviation_us =  512;
+
+    // The output's neutral value is 90 with deviations up to +-8. 64 perfectly divides 512 into 8
+    // and also allows the compiler to use shifts instead of division.
+    rcDrive = uint8_t(90 + (deviation_us / 64));
+  } else {
+    sei();
+  }
+  Serial.write(rcDrive);
+  ...
+}
+...
+          </pre>
+          <figcaption>Listing 3</figcaption>
+        </figure>
+        <p>
+I also took the liberty to do the calculation based on the deviation from 1.5ms, instead of calculating the duty-cycle.
+This was not only for my sanity, but also necessary since the code no longer has three timestamps to work with.
+<a href="https://godbolt.org/z/s8z6ozv89" target="_blank">Here's</a> the new code.
+While the output is slightly longer, this time there are no calls to functions that do long multiplications or divisions.
+And especially the interrupt is now only 27 instructions on the longer of the two paths.
+While writing this article, I noticed that it could be even shorter by turning the timestamps into 16-bit variables.
+So there are even more gains to be had.
+        </p>
+      </section>
+      <section>
+        <h2>Conclusion</h2>
+        <p>
+And that's pretty much it.
+After figuring out the convoluted build and flash process for the code, I tested these changes and the car has been much more quiet since.
+So yeah: don't do heavy work inside interrupts.
+        </p>
+        <p>
+There are still plenty of ways this could be improved: for example the PWM output is still half done in software.
+But there are enough other things to fix elsewhere, maybe I'll find something else to write about.
+        </p>
+      </section>
+      <section>
+        <h2>Changelog</h2>
+        <ul>
+          <li>2022-06-12 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      Last change: <a href="changelog.html">2022-06-12</a>
+    </footer>
+  </body>
+</html>
