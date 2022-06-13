@@ -30,26 +30,26 @@ But not only can this little car drive autonomously, it can also be driven with 
 (Which workshop participants are sometimes way more interested in than autonomous driving.)
         </p>
         <p>
-In this article I'll focus on one specific quirk I investigated and fixed: every now and then the car would start twitching for no apparent reason and stop again after a while.
+In this article I'll focus on one specific quirk I investigated and fixed: every now and then the car hat sudden spurts of twitching for no apparent reason and calmed down after a while.
 By 'twitching' I mean it would shake its steerable front wheels and give small pulses with it's electrical motor.
-While the shaking wasn't very severe and didn't worsen the driving performance too much, it was still quite audible and would look especially strange when the car was supposed to stand still.
-By 'no apparent reason' I mean that it happened when steered via the radio control, during autonomous driving via software and also while parking.
+While the shaking wasn't very severe and didn't worsen the driving performance too much, it was still quite audible and would look especially strange when the car was supposed to be standing still.
+By 'no apparent reason' I mean that it could happen in any driving mode: when steered via the radio control, during autonomous driving via software and also while parking.
         </p>
       </section>
       <section>
         <h2>The System</h2>
         <p>
 Before we get into the debugging process, I'll take a moment to elaborate on the system architecture of the car.
-While based on a off-the-shelf 1:8 electric model car, a bunch of electronics have been added:
+While based on a off-the-shelf 1:8 electric model car with radio receiver, steering servo, brushless motor, gearing and suspension, a bunch of electronics have been added:
         </p>
         <ul>
           <li>In the center of it all sits a Mini-ITX based computer running Linux.</li>
           <li>Spread around the car are a few Arduino Micro boards.</li>
-          <li>One of these a hooked up to the radio receiver as well as the steering servo and motor driver.</li>
-          <li>PD2 and PD3 are used to read the radio signal, PD6 and PC7 are used to control the motor and steering.</li>
-          <li>Even in remote-control-mode the radio signal makes a round-trip through the Linux PC and back to the Arduino.</li>
           <li>There are also a LIDAR, cameras, and some more sensors that aren't relevant here.</li>
           <li>Everything is connected to the Linux computer via USB.</li>
+          <li>One of the Arduinos is hooked up to the radio receiver as well as the steering servo and motor driver.</li>
+          <li>PD2 and PD3 are used to read the radio signal, PD6 and PC7 are used to control the motor and steering.</li>
+          <li>Even in remote-control-mode the radio signal makes a round-trip through the Linux PC and back to the Arduino.</li>
         </ul>
         <p>
 And here's a diagram because I like love <a href="https://en.wikipedia.org/wiki/Box_Drawing" target="_blank">box drawing characters</a>:
@@ -123,7 +123,7 @@ A really useful tool to understand PWM is an oscilloscope (well, a logic analyze
 ║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
 ╚═══════════════════════════════════════════════════════════════════════════════════════╝
           </pre>
-          <figcaption>Figure 1: a nice little PWM waveform</figcaption>
+          <figcaption>Figure 1: nice little PWM waveforms</figcaption>
         </figure>
         <p>
 What we have in fig. 1 is what you should see when you connect an oscilloscope to two of the PWM related pins on the Arduino.
@@ -163,19 +163,19 @@ So this is what we get when turning the radio controllers steering wheel all the
 ║       ·       ·       ·       ·       ·       ·       ·       ·       ·       ·       ║
 ╚═══════════════════════════════════════════════════════════════════════════════════════╝
           </pre>
-          <figcaption>Figure 2: steering to the left</figcaption>
+          <figcaption>Figure 2: counterclockwise doughnuts!</figcaption>
         </figure>
         <p>
 The only thing that changes is the distance between the rising and falling edge, while the period remains unchanged.
-Had we turned the steering wheel the other way, the edges would go further apart to 2ms.
-Of course many steps in between these values are also possible to get smooth steering and throttle control.
+Had we turned the steering wheel the other way, the edges would go further apart to 2ms and look the same as the throttle signal.
+Of course many values in between these extremes are also possible to get smooth steering and throttle control.
         </p>
       </section>
       <section>
         <h2>Microcontrolling</h2>
         <p>
 How do we work with such a PWM signal?
-In general, your average microcontroller offers a bunch of options to deal with PWM signals and the <a href="https://www.microchip.com/en-us/product/ATmega32U4" target="_blank">AtMege32U4</a> on the Arduino Micro is no different.
+In general, your average microcontroller offers a bunch of options to deal with PWM signals and the <a href="https://www.microchip.com/en-us/product/ATmega32U4" target="_blank">AtMega32U4</a> chip on the Arduino Micro is no different.
 However, these options are bound to specific pins, so let's see what we can use on PD2 and PD3 as inputs.
         </p>
         <figure id="figure3">
@@ -205,10 +205,10 @@ OC4A | CLKO | ICP3 | PC7 ─╫13 └┬┬┬┬┘ 12╫─ PD6 | T1   | !OC4D
         </figure>
         <p>
 There are not many functions on these pins: <code>RX/TXD1</code> are for serial communications, which we don't need here.
-The other option is much more promising: set up the external interrupts on these pins to trigger whenever the logical level changes between high and low.
+The other option is much more promising: the external interrupts on these pins can be used to run some code whenever the logical level changes between high and low.
 We will also need a way to get the current time while inside the interrupt, but Arduino already offers the <a href="https://www.arduino.cc/reference/en/language/functions/time/micros/" target="_blank"><code>micros()</code></a> function for that.
 With interrupts we should be careful to do as little work as possible, because the AtTMega32U4 does not support nested interrupts.
-This means that while the program is inside an interrupt and the conditions for another, more important interrupt arise, the fist one still has to complete before the next one can start.
+This means that while the program is inside an interrupt and the conditions for another, more important interrupt arise, the first one still has to complete before the next one can start.
         </p>
         <p>
 So much for reading in PWM signals, how about outputting them?
@@ -216,11 +216,11 @@ For that we have to look at PC6 and PD7, which offer multiple "output compare" m
 Output compare is perfect to create a PWM signal: there is a counter constantly going up towards some maximum value where it is reset to 0 and the output pin is set high.
 Additionally there is a compare value.
 When the counter reaches the compare value, the output pin is set low.
-The result: a PWM waveform that can be configured by setting the compare value.
+The result: a PWM waveform where we can move the falling edge by setting the compare value.
         </p>
         <p>
-If we want to produce a 6ms long signal where the first 1.5ms are high and know that the counter runs at 16MHz, then it should set the output low at 24000 and reset at 96000 counts.
-These values a a bit too large for this poor 8-bit chip, so we can use a prescaler to reduce the counter frequency and therefore the compare and reset values.
+If we want to produce a 6ms long signal where the first 1.5ms are high and know that the counter runs at 16MHz, then the compare value should be 24000 and reset should happen at 96000 counts.
+These values are a bit too large for this poor 8-bit chip, so we can use a prescaler to reduce the counter frequency and use smaller compare and reset values to produce the same timing.
 But that's enough about microcontrollers for now, let's finally get back to the car!
         </p>
       </section>
@@ -230,9 +230,9 @@ But that's enough about microcontrollers for now, let's finally get back to the 
 So here's the situation: we have the twitching car, signals going form the radio controller to the receiver, through the Arduino, through an USB cable to the Linux PC, through some convoluted software, back through the USB cable, through the Arduino, to the motor and servo.
         </p>
         <p>
-That's a lot of potential failure points, so let's start somewhere.
+That's a lot of potential failure points, where to start?
 To get a better picture of how severe this problem is I started where I was pretty sure to find a bad signal: between the Arduino and the servo.
-With a scope and a few wired I found this: 
+With a scope and a few wires I found this: 
         </p>
         <figure id="figure4">
           <pre>
@@ -256,7 +256,7 @@ With a scope and a few wired I found this:
         </figure>
         <p>
 The car was supposed to be completely neutral, outputting an 1.5ms signal.
-What I found was that this was true most of the time, but occasionally the signal was around 80µs longer than it should be.
+What I found was that this was true most of the time, but occasionally the signal was up to 80µs longer than it should be.
 As expected, these incorrect timings exactly matched when the car was twitching around.
         </p>
         <p>
@@ -307,7 +307,7 @@ Out: 0x5A 0x5A
         </figure>
         <p>
 Nothing to see here...
-Other than the fact that apparently 90<sub>10</sub> is the neutral value, instead of 80, as you might expect from a single byte (or y'know using a signed byte with 0 being neutral).
+Other than the fact that apparently 90<sub>10</sub> is the neutral value, instead of 80<sub>16</sub>, as you might expect from a single byte (or y'know using a signed byte with 0 being neutral).
         </p>
         <p>
 So it seems that the Arduino is getting the same input over and over again, but is somehow creating different outputs.
@@ -367,7 +367,7 @@ Okay, that's not quite true, the timers are connected to every pin.
 It is just the case that these connections take an unfortunate route: straight through the CPU via the timer interrupt.
 This library just sets up a timer to periodically fire an interrupt and checks if some GPIO pins should be toggled.
 The upside is that you can pretty much use any GPIO pin and are not bound by the whims of whoever decided on the pin alternate modes.
-The downside is that you have to go through the CPU, while the output compare could work independently.
+The downside is that you have to go through the CPU, while dedicated hardware could work independently.
 And if the CPU is busy with some other interrupt, this one will have to wait and flip the pin too late, causing the 80µs delay we observed.
         </p>
         <p>
@@ -428,17 +428,17 @@ It took me a while to comprehend what was happening in this interrupt (note that
 The <code>else</code> branch is quite uninteresting, so let's focus on what happens when <code>digitalRead(1)</code> returns true.
 The code is juggling three timestamps: <code>driveHighTime</code> when the signal last went high, <code>driveLowTime</code> when the signal goes low and finally <code>currentTime</code> is the current time where the signal went high.
 With these timestamps two durations are calculated: <code>driveLowTime - driveHighTime</code> is how many µs the signal was high for and <code>currentTime - driveHighTime</code> is the length of the entire signal in µs.
-The first duration is then divided by the second to get the duty-cycle, and then there's a multiplication by 1000 in there for good measure, since everything uses integers.
+The first duration is then divided by the second to get the duty-cycle, and then there's a multiplication by 1000 in there for good measure, since everything uses integers, not floats.
         </p>
         <p>
 Okay, as mentioned earlier, RC equipment cares about timing, not duty-cycles, so if for some reasind the period changes, e.g. because we changed the radio receiver, the code might not work anymore.
 But the much much bigger problem is the division operation.
 I'm sure you've already heard that "divisions are expensive".
 And while the truth of that statement heavily depends on the circumstances, here it is almost an understatement.
-The problem is, that this code is asking an 8-bit CPU that can barely do multiplications to do a division of two 32-bit variables.
+This code is asking an 8-bit CPU that can barely do multiplications to do a division of two 32-bit variables.
 Since both sides of the operation are variables, there is also no chance that the compiler could do any smart optimizations to make this less of a disaster.
 <a href="https://godbolt.org/z/n8de1TG4Y" target="_blank">Here's a link</a> that shows how bad just one of these interrupts is.
-Though it doesn't even show the full extend because the <a href="https://github.com/gcc-mirror/gcc/blob/master/libgcc/config/avr/lib1funcs.S#L621" target="_blank">multiplication</a> and <a href="https://github.com/gcc-mirror/gcc/blob/master/libgcc/config/avr/lib1funcs.S#L1633" target="_blank">division</a> functions is just called and not shown. 
+Though it doesn't even show the full picture because the <a href="https://github.com/gcc-mirror/gcc/blob/master/libgcc/config/avr/lib1funcs.S#L621" target="_blank">multiplication</a> and <a href="https://github.com/gcc-mirror/gcc/blob/master/libgcc/config/avr/lib1funcs.S#L1633" target="_blank">division</a> functions is just called and not shown. 
         </p>
       </section>
       <section>
@@ -512,9 +512,9 @@ void update() {
         <p>
 I also took the liberty to do the calculation based on the deviation from 1.5ms, instead of calculating the duty-cycle.
 This was not only for my sanity, but also necessary since the code no longer has three timestamps to work with.
-<a href="https://godbolt.org/z/s8z6ozv89" target="_blank">Here's</a> the new code.
+<a href="https://godbolt.org/z/z1sWc33rP" target="_blank">Here's</a> the new code.
 While the output is slightly longer, this time there are no calls to functions that do long multiplications or divisions.
-And especially the interrupt is now only 27 instructions on the longer of the two paths.
+And especially the interrupt is now only 17 instructions on the longer of the two paths.
 While writing this article, I noticed that it could be even shorter by turning the timestamps into 16-bit variables.
 So there are even more gains to be had.
         </p>
@@ -534,6 +534,7 @@ But there are enough other things to fix elsewhere, maybe I'll find something el
       <section>
         <h2>Changelog</h2>
         <ul>
+          <li>2022-06-13 - Improved working, fixed typos.</li>
           <li>2022-06-12 - Initial post.</li>
         </ul>
       </section>
@@ -541,7 +542,7 @@ But there are enough other things to fix elsewhere, maybe I'll find something el
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2022-06-12</a>
+      Last change: <a href="changelog.html">2022-06-13</a>
     </footer>
   </body>
 </html>
