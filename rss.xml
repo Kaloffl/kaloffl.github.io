@@ -6,8 +6,14 @@
   <link>https://kaloffl.github.io</link>
   <description></description>
   <language>en-us</language>
-  <lastBuildDate>13 Jun 2022 00:00:00 +0000</lastBuildDate>
+  <lastBuildDate>15 Jun 2022 00:00:00 +0000</lastBuildDate>
 
+ <item>
+   <title>random_float(min, max)</title>
+   <guid>https://kaloffl.github.io/0007.html</guid>
+   <link>https://kaloffl.github.io/0007.html</link>
+   <pubDate>15 Jun 2022 00:00:00 +0000</pubDate>
+</item>
  <item>
    <title>How not to intercept a PWM signal</title>
    <guid>https://kaloffl.github.io/0006.html</guid>
