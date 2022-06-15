@@ -138,7 +138,7 @@ Maybe not the best distribution, but certainly no bias towards the high or low v
 Let's loot a bit close at these values, as close as the floating point format permits, in fact.
 Here is a (simplified) view of the distribution of possible random values with regards to floating-point resolution:
         </p>
-        <figure>
+        <figure id="figure0">
           <pre>
  o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o  
  ┴┴┴┴┴┴┴┴┴─┴─┴─┴─┴─┴─┴─┴─┴───┴───┴───┴───┴───┴───┴───┴───┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴
@@ -149,7 +149,7 @@ Here is a (simplified) view of the distribution of possible random values with r
 
                                                          8       8       8       8       8       8       8       8        
  o o o o o o o o o o o o 8   8   8   8   8   8   8   8   8       8       8       8       8       8       8       8        
- ┴┴┴┴┴┴┴┴┴─┴─┴─┴─┴─┴─┴─┴─┴───┴───┴───┴───┴───┴───┴───┴───┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴
+ ┼┴┴┴┴┴┴┴┼─┴─┴─┴─┴─┴─┴─┴─┼───┴───┴───┴───┴───┴───┴───┴───┼───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┼
 1/16    1/8             1/4                             1/2                                                              1
 1/16    2/16                                            8/16    9/16                                                      
           </pre>
@@ -172,7 +172,7 @@ While I have no strong argument against the above distribution, I'd prefer it if
 That way it is much clearer how many distinct values are possible, and we have no different behavior when working at the top or the bottom of the range.
 This is how it would look like, if we spread the possible values evenly, which we can get by only taking the integers in the range [0 .. 16,777,216):
         </p>
-        <figure>
+        <figure id="figure1">
           <pre>
  o       o       o       o       o       o       o       o       o       o       o       o       o       o       o        
  ┴┴┴┴┴┴┴┴┴─┴─┴─┴─┴─┴─┴─┴─┴───┴───┴───┴───┴───┴───┴───┴───┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴
@@ -226,7 +226,7 @@ Here we can see:
         <p>
 And to finish it all off, here is the code, in C++:
         </p>
-        <figure>
+        <figure id="listing0">
           <pre>
 float random_float(RandomState& state)
 {
@@ -250,6 +250,7 @@ float random_float(RandomState& state)
       <section>
         <h2>Change-log</h2>
         <ul>
+          <li>2022-06-15 - Slightly improved figure 0.</li>
           <li>2022-06-07 - Switched from pure ASCII to Unicode box-drawing characters.</li>
           <li>2021-10-12 - Improved formulations.</li>
           <li>2021-01-27 - Added the pigeonhole argument.</li>

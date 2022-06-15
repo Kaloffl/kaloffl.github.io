@@ -437,7 +437,7 @@ With these timestamps two durations are calculated: <code>driveLowTime - driveHi
 The first duration is then divided by the second to get the duty-cycle, and then there's a multiplication by 1000 in there for good measure, since everything uses integers, not floats.
         </p>
         <p>
-Okay, as mentioned earlier, RC equipment cares about timing, not duty-cycles, so if for some reasind the period changes, e.g. because we changed the radio receiver, the code might not work anymore.
+Okay, as mentioned earlier, RC equipment cares about timing, not duty-cycles, so if for some reason the period changes, e.g. because we changed the radio receiver, the code might not work anymore.
 But the much much bigger problem is the division operation.
 I'm sure you've already heard that "divisions are expensive".
 And while the truth of that statement heavily depends on the circumstances, here it is almost an understatement.
@@ -543,7 +543,8 @@ But there are enough other things to fix elsewhere, maybe I'll find something el
       <section>
         <h2>Change-log</h2>
         <ul>
-          <li>2022-06-13 - Improved working, fixed typos.</li>
+          <li>2022-06-15 - Fixed typos.</li>
+          <li>2022-06-13 - Improved wording, fixed typos.</li>
           <li>2022-06-12 - Initial post.</li>
         </ul>
       </section>
