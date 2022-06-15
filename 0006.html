@@ -23,6 +23,7 @@
         <h2>How not to intercept a PWM signal</h2>
         <div>First published: <time>2022-06-12</time></div>
       </header>
+
       <section>
         <p>
 Recently I was put in charge of a computerified 1:8 model RC car that is used in workshops to teach autonomous driving and machine learning concepts.
@@ -36,8 +37,9 @@ While the shaking wasn't very severe and didn't worsen the driving performance t
 By 'no apparent reason' I mean that it could happen in any driving mode: when steered via the radio control, during autonomous driving via software and also while parking.
         </p>
       </section>
+
       <section>
-        <h2>The System</h2>
+        <h3>The System</h3>
         <p>
 Before we get into the debugging process, I'll take a moment to elaborate on the system architecture of the car.
 While based on a off-the-shelf 1:8 electric model car with radio receiver, steering servo, brushless motor, gearing and suspension, a bunch of electronics have been added:
@@ -87,8 +89,9 @@ And here's a diagram because I like love <a href="https://en.wikipedia.org/wiki/
           <figcaption>Figure 0: System overview</figcaption>
         </figure>
       </section>
+
       <section>
-        <h2>Pulse Width Modulation</h2>
+        <h3>Pulse Width Modulation</h3>
         <p>
 While we're at introductions, let's also quickly go over PWM, especially as it is used for RC cars.
 A really useful tool to understand PWM is an oscilloscope (well, a logic analyzer might be enough), so let's pretend we have one:
@@ -171,8 +174,9 @@ Had we turned the steering wheel the other way, the edges would go further apart
 Of course many values in between these extremes are also possible to get smooth steering and throttle control.
         </p>
       </section>
+
       <section>
-        <h2>Microcontrolling</h2>
+        <h3>Microcontrolling</h3>
         <p>
 How do we work with such a PWM signal?
 In general, your average microcontroller offers a bunch of options to deal with PWM signals and the <a href="https://www.microchip.com/en-us/product/ATmega32U4" target="_blank">AtMega32U4</a> chip on the Arduino Micro is no different.
@@ -224,8 +228,9 @@ These values are a bit too large for this poor 8-bit chip, so we can use a presc
 But that's enough about microcontrollers for now, let's finally get back to the car!
         </p>
       </section>
+
       <section>
-        <h2>Problem analysis</h2>
+        <h3>Problem analysis</h3>
         <p>
 So here's the situation: we have the twitching car, signals going form the radio controller to the receiver, through the Arduino, through an USB cable to the Linux PC, through some convoluted software, back through the USB cable, through the Arduino, to the motor and servo.
         </p>
@@ -314,8 +319,9 @@ So it seems that the Arduino is getting the same input over and over again, but 
 Time to dig into the sourcecode and find out out more.
         </p>
       </section>
+
       <section>
-        <h2>Inside the heart of darkness</h2>
+        <h3>Inside the heart of darkness</h3>
         <p>
 Let's try to figure out the path of the signal from serial to PWM, maybe there is something obvious in there.
         </p>
@@ -441,8 +447,9 @@ Since both sides of the operation are variables, there is also no chance that th
 Though it doesn't even show the full picture because the <a href="https://github.com/gcc-mirror/gcc/blob/master/libgcc/config/avr/lib1funcs.S#L621" target="_blank">multiplication</a> and <a href="https://github.com/gcc-mirror/gcc/blob/master/libgcc/config/avr/lib1funcs.S#L1633" target="_blank">division</a> functions is just called and not shown. 
         </p>
       </section>
+
       <section>
-        <h2>Could you just not...</h2>
+        <h3>Could you just not...</h3>
         <p>
 ... do 99% of this work in the ISR?
 Why yes you could!
@@ -519,8 +526,9 @@ While writing this article, I noticed that it could be even shorter by turning t
 So there are even more gains to be had.
         </p>
       </section>
+
       <section>
-        <h2>Conclusion</h2>
+        <h3>Conclusion</h3>
         <p>
 And that's pretty much it.
 After figuring out the convoluted build and flash process for the code, I tested these changes and the car has been much more quiet since.
@@ -531,8 +539,9 @@ There are still plenty of ways this could be improved: for example the PWM outpu
 But there are enough other things to fix elsewhere, maybe I'll find something else to write about.
         </p>
       </section>
+
       <section>
-        <h2>Changelog</h2>
+        <h2>Change-log</h2>
         <ul>
           <li>2022-06-13 - Improved working, fixed typos.</li>
           <li>2022-06-12 - Initial post.</li>
@@ -542,7 +551,7 @@ But there are enough other things to fix elsewhere, maybe I'll find something el
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2022-06-13</a>
+      <a href="changelog.html">Change-log</a>
     </footer>
   </body>
 </html>

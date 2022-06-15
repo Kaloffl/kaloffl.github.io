@@ -23,6 +23,7 @@
         <h2>Debugging Scanner Sombre [Part 2]</h2>
         <div>First published: <time>2022-04-10</time></div>
       </header>
+
       <section>
         <p>
 In the <a href="0004.html">previous post</a> we explored and fix an unfortunate bug in the game <a href="https://www.introversion.co.uk/scannersombre/">Scanner Sombre</a>.
@@ -245,8 +246,9 @@ This now gives us a full picture of why the faulty code wasn't executed in the p
 Unfortunately I don't think there is an easy way to hide CPU features from a program, so anyone with a SHA1-instruction-capable CPU will unfortunately have to patch the executable to get it running again.
         </p>
       </section>
+
       <section>
-        <h2>Who do we blame?!</h2>
+        <h3>Who do we blame?!</h3>
         <p>
 Now that we answered the what, why, how and when, it is time to answer the final question: who.
 As it is programming tradition, that we only deliver the highest quality of software or face the consequences of our actions.
@@ -334,8 +336,9 @@ So the jury is still out on this one.
 Tune in for the next crusade, when some other software doesn't work!
         </p>
       </section>
+
       <section>
-        <h2>Addendum</h2>
+        <h3>Addendum</h3>
         <p>
 Ladies and Gentlemen, we've got him!
 Thanks to <a href="https://steamcommunity.com/app/475190/discussions/0/2999920878441544387/?tscn=1650969565#c3274689286970646480" target="_blank">a tip on the steam discussions</a> I found the source of the broken code and can finally rest easy again at night.
@@ -347,8 +350,9 @@ It was introduces in 2014, and then <a href="https://github.com/openssl/openssl/
 I'm not entirely sure that this code would have worked on Linux, but the <code>rax</code> register seems to have a slightly different role between platforms, so it's plausible.
         </p>
       </section>
+
       <section>
-        <h2>Changelog</h2>
+        <h2>Change-log</h2>
         <ul>
           <li>2022-06-11 - Improved tables, external links now open in new tab.</li>
           <li>2022-06-07 - Switched from pure ASCII to Unicode box-drawing characters.</li>
@@ -360,7 +364,7 @@ I'm not entirely sure that this code would have worked on Linux, but the <code>r
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2022-06-13</a>
+      <a href="changelog.html">Change-log</a>
     </footer>
   </body>
 </html>

@@ -23,12 +23,14 @@
         <h2>intersect_lines() [Part 2]</h2>
         <div>First published: <time>2021-10-15</time></div>
       </header>
+
       <section>
         <p>
 <a href="0002.html">Last we left off</a>, we had a way to check if two line segments intersect, but other questions like *where* they intersect were left open.
 To get to that answer, we'll first take a closer look at what I wrote at the end of the last article: the Minkowski Difference.
         </p>
       </section>
+
       <section>
         <h3>line - line = parallelogram</h3>
         <p>
@@ -58,6 +60,7 @@ This is also how a much more advanced collision-detection algorithm works: the G
 But luckily for us, when we deal with just two lines in 2D, we don't need a fancy iterative algorithm to locate the Origin, we just need a little math.
         </p>
       </section>
+
       <section>
         <h3>Where does he come from, where does he go?</h3>
         <figure id="figure1">
@@ -118,6 +121,7 @@ t = j / h
           <figcaption>Listing 1: the plan of action to get the s and t coordinates</figcaption>
         </figure>
       </section>
+
       <section>
         <h3>The Numbers, Mason!</h3>
         <p>
@@ -215,6 +219,7 @@ So now that calculation is also really short, and as a bonus we don't need l<sub
 Also, we didn't need m<sub>1</sub> and m<sub>2</sub> in the first place.
         </p>
       </section>
+
       <section>
         <h3>Putting it all together</h3>
         <p>
@@ -271,7 +276,7 @@ We'll see.
       </section>
 
       <section>
-        <h2>Changelog</h2>
+        <h2>Change-log</h2>
         <ul>
           <li>2022-06-07 - Switched from pure ASCII to Unicode box-drawing characters.</li>
           <li>2021-10-15 - Initial post.</li>
@@ -281,7 +286,7 @@ We'll see.
     </article>
 
     <footer>
-      Last change: <a href="changelog.html">2022-06-13</a>
+      <a href="changelog.html">Change-log</a>
     </footer>
   </body>
 </html>
