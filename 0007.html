@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/rss+xml"  title="Lars' blog RSS" href="rss.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>random_float(min, max) - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="rss.xml" title="rss feed">RSS Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>random_float(min, max)</h2>
+        <div>First published: <time>2022-06-15</time></div>
+      </header>
+
+      <section>
+        <p>
+Whoops, I meant to post this article quite soon after the first one about the random_float() function.
+I even wrote 90% of it, but then just left it lying around for almost one and a half years.
+So here it finally is.
+        </p>
+        <p>
+Continuing from <a href="0001.html">my first article</a>, the next logical step is to go from the range [0 .. 1) to an arbitrary range [min .. max).
+Though here it is much less clear to me, if that interval should be closed or open and at which side.
+Maybe it would make sens to treat the first argument as the closed and the second as the open side and impose no min-max ordering.
+Most other implementations I saw treat the min as inclusive and the max as exclusive.
+But most implementations are also technically incorrect, so there's that.
+For simplicity, I'll begin with an both-inclusive algorithm for [min .. max] and discuss later how to change that.
+Now let's first look at what is usually done.
+        </p>
+      </section>
+
+      <section>
+        <h3>It doesn't work but it's fast!</h3>
+        <p>
+Well, that heading might be a bit of an overstatement, because in reality, the naive way I'll be describing here work well enough in most cases.
+It does, however, bring with it a tiny amount of bias.
+Not enough to matter in most applications, but for example in a long-running monte-carlo integration, it can add up.
+So what is this horribly shameful way of calculating a random number? Here it is:
+        </p>
+        <figure>
+          <code>
+            <pre>
+float absolutely_broken_random_float(float min, float max, RandomState& state)
+{
+  return random_float(state) * (max - min) + min;
+}
+            </pre>
+          </code>
+        </figure>
+        <p>
+You have probably seen this before, because pretty much every implementation does exactly that <a href="https://gcc.gnu.org/onlinedocs/libstdc++/latest-doxygen/a00446_source.html#l01823" target="_blank">[0]</a><a href="https://github.com/microsoft/STL/blob/c319a7b2e4eb302b9abe9427079e669bf38ad6f8/stl/inc/random#L2666" target="_blank">[1]</a>.
+But if we use it for a range that doesn't happen to align with the way floats work, for example [0 .. 100), we get this:
+        </p>
+        <figure>
+          <pre>
+               │                │   difference   │   max. float   │   max. float  
+ input integer │  output float  │ between floats │ precision down │  precision up 
+═══════════════╪════════════════╪════════════════╪════════════════╪═══════════════
+            0  │  0.0000000000  │                │  1.401298e-45  │  1.401298e-45 
+            1  │  0.0000059605  │  5.960464e-06  │  4.547474e-13  │  4.547474e-13 
+            2  │  0.0000119209  │  5.960464e-06  │  9.094947e-13  │  9.094947e-13 
+            3  │  0.0000178814  │  5.960464e-06  │  1.818989e-12  │  1.818989e-12 
+            4  │  0.0000238419  │  5.960464e-06  │  1.818989e-12  │  1.818989e-12 
+            5  │  0.0000298023  │  5.960464e-06  │  1.818989e-12  │  1.818989e-12 
+            6  │  0.0000357628  │  5.960464e-06  │  3.637979e-12  │  3.637979e-12 
+            7  │  0.0000417233  │  5.960464e-06  │  3.637979e-12  │  3.637979e-12 
+            8  │  0.0000476837  │  5.960464e-06  │  3.637979e-12  │  3.637979e-12 
+            9  │  0.0000536442  │  5.960464e-06  │  3.637979e-12  │  3.637979e-12 
+          ...  │           ...  │           ...  │           ...  │           ... 
+     16777206  │ 99.9999389648  │  7.629395e-06  │  7.629395e-06  │  7.629395e-06 
+     16777207  │ 99.9999465942  │  7.629395e-06  │  7.629395e-06  │  7.629395e-06 
+     16777208  │ 99.9999542236  │  7.629395e-06  │  7.629395e-06  │  7.629395e-06 
+     16777209  │ <b>99.9999618530</b>  │  7.629395e-06  │  7.629395e-06  │  7.629395e-06 
+     16777210  │ <b>99.9999618530</b>  │  0.000000e+00  │  7.629395e-06  │  7.629395e-06 
+     16777211  │ 99.9999694824  │  7.629395e-06  │  7.629395e-06  │  7.629395e-06 
+     16777212  │ 99.9999771118  │  7.629395e-06  │  7.629395e-06  │  7.629395e-06 
+     16777213  │ <b>99.9999847412</b>  │  7.629395e-06  │  7.629395e-06  │  7.629395e-06 
+     16777214  │ <b>99.9999847412</b>  │  0.000000e+00  │  7.629395e-06  │  7.629395e-06 
+     16777215  │ 99.9999923706  │  7.629395e-06  │  7.629395e-06  │  7.629395e-06 
+          </pre>
+        </figure>
+        <p>
+Which shows that some float outputs appear twice.
+This isn't great, because this function is deterministic and will always double up the same numbers, so this rounding error is never resolved.
+In fact, while I've iterated over 16,777,215 possible values for this table, there are only 15,456,010 distinct outputs.
+        </p>
+      </section>
+
+      <section>
+        <h3>The birds and the buckets</h3>
+        <p>
+This problem stems from a mismatch between the input range (what <code>random_foat()</code> returns: 16,777,215 unique, evenly spaced values) and the expected output given via the min and max parameters.
+Imagine dividing the cost of lunch ending in 11 cents between 5 colleagues.
+There is no way to fairly divide it, and some will have to give a cent more than others.
+Under colleagues you might keep track and average this out over time, but this function is too simple to do that.
+        </p>
+        <p>
+One (the?) solution is to shrink the input range by rejecting values until it is a multiple of the output range.
+Professor O'Neill has already written about and compared algorithms for this, so I'll refer you to <a href="https://www.pcg-random.org/posts/bounded-rands.html" target="_blank">her post</a>.
+For the rest of this article, I'll assume, that we already have a <code>random_int32(min, max)</code> function that is unbiased.
+        </p>
+      </section>
+
+      <section>
+        <h3>Anchoring the floats</h3>
+        <p>
+Just like last time, I want to treat the floating-point output more like fixed-point with constant distances between the possible values.
+Now that negative numbers are also possible, there are cases with 2<sup>25</sup> possible outputs, for example [-1 .. 1).
+And if we want to have [-1 .. 1], we can even fit 2<sup>25</sup>+1 values with even spacing!
+Thanks to the nature of floats, the same is true for [-2 .. 2), [-4 .. 4), and so on.
+        </p>
+        <figure>
+          <pre>
+ ┼───┴───┴───┴───┴───┴───┴───┴───┼─┴─┴─┴─┴─┴─┴─┴─┼┴┴┴┴┴┴┴┼ ... ┼┴┴┴┴┴┴┴┼─┴─┴─┴─┴─┴─┴─┴─┼───┴───┴───┴───┴───┴───┴───┴───┼
+-1                             -1/2            -1/4    -1/8   1/8     1/4             1/2                              1
+          </pre>
+        </figure>
+        <p>
+If the distance between values is fixed to the coarsest resolution in the whole range, it is possible for the other end of the range to not align with that.
+For example, the range [1 .. 2<sup>33</sup>) will have a step size of 2<sup>33-24</sup> = 512, with one value at 0 and the next higher one at 512, we can never get a value of 1.
+This is probably not the end of the world, but is something to keep in mind when using this function.
+The question now is, whether the lower end of this range should be rounded to nearest (0) or into the range (512), I'll be doing the latter.
+        </p>
+        <p>
+As mentioned above, we can get up to 2<sup>25</sup>+1 values if we have a negative min and positive max.
+That settles the Pi vs Tau debate at least for this algorithm, because when generating a random, unbiased angle with the algorithm developed here, the range [-Pi .. Pi) will have twice the resolution compared to [0 .. Tau).
+        </p>
+        <p>
+To get the step size, I used the function <code>nextafter</code>, which gives the next representable floating-point value either up or downwards.
+Subtracting the next value from the current one gives the step size, doing it for both ends and taking the max gives the coarsest step size.
+This step is quite expensive though, so if you know a better way to achieve this, let me know.
+        </p>
+        <p>
+<b>Addendum:</b>
+Since writing this part I've found out that <code>nextafter</code> can be achieved by treating the float bits as an integer and adding or subtracting one.
+It's actually quite beautiful how the carry from the mantissa correctly affects the exponent.
+I guess the will be a part 3 in this series in about one and a half years about this.
+In the meantime I heavily recommend <a href="https://randomascii.wordpress.com/2012/04/21/exceptional-floating-point/" target="_blank">Bruce Dawson's</a> series about floats, as well as <a href="https://blog.m-ou.se/floats/" target="_blank">Mara's</a> post that reminded me of this fact.
+        </p>
+      </section>
+
+      <section>
+        <h3>The final stretch(es)</h3>
+        <p>
+With the step size known, we can divide the upper and lower bounds of the range by it, which effectively changes the step size into 1 while preserving the number of values.
+What else has a step size of 1? Integers!
+What does the unbiased, arbitrary range <code>random_int32(min, max)</code> function need? Integers!
+So at this point we just convert the divided bound values to actual 32-bit integers, pass them into the function and get out a random number.
+Because this number can't be larger than 2<sup>24</sup> or smaller than -(2<sup>24</sup>), it can be converted back to a float without a problem.
+Now one multiplication with the step size and we're back in the original bounds, with no rounding and no bias.
+        </p>
+      </section>
+
+      <section>
+        <h3>The code</h3>
+        <p>
+So here is everything discussed above tied together into a nice little function.
+        </p>
+        <figure>
+          <code>
+            <pre>
+#include &lt;algorithm&gt; // std::max
+#include &lt;cmath&gt;     // std::nextafter, std::ceil, std::floor
+#include &lt;cstdint&gt;   // int32_t
+
+float random_float(float min, float max, RandomState& state)
+{
+  float d0 = std::nextafter(min, max) - min;
+  float d1 = max - std::nextafter(max, min);
+  float max_delta = std::max(d0, d1);
+  int32_t imin = (int32_t)std::ceil (min / max_delta);
+  int32_t imax = (int32_t)std::floor(max / max_delta);
+  return (float)random_int32(imin, imax, state) * max_delta;
+}
+            </pre>
+          </code>
+        </figure>
+        <p>
+Less nice is the performance of it: on a quick benchmark, it took 10 times as long to generate the same number of values as the biased float multiplication everyone is using.
+One reason will be that sometimes the <code>random_int32</code> function will reject a value and re-generate a new one.
+Another reason is, that the <code>nextafter</code>, conversions and divisions are also relatively expensive.
+Some of that could be computed once and re-used, if the code is always generating random numbers in the same range, which is often the case.
+Initial testing showed, that pre-calculated values could reduce the time to 2.3x of the naive method.
+Unfortunately C++ doesn't allow floats as template parameters, so a hefty serving of hackering was required.
+You could also hope for the compiler to inline the function and optimize it that way, so as always: measure measure measure!
+        </p>
+      </section>
+
+      <section>
+        <h3>Conclusion</h3>
+        <p>
+There certainly is some bore optimization potential in this function, but what's much more important and still missing is a use-case where the difference in correctness can be appreciated.
+I mentioned long-running monte-carlo integration above, for example path-tracing might benefit from this.
+It'll also be a good real-world example to measure the performance difference.
+And I've not even looked at the assembly output of this function. 
+What terrible negligence!
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2022-06-15 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
