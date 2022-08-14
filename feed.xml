@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title>Lars' Website</title>
+  <link rel="alternate" type="text/html" href="https://kaloffl.github.io/"/>
+  <link rel="self" type="application/atom+xml" href="https://kaloffl.github.io/feed.xml"/>
+  <updated>2022-08-14T01:43:47Z</updated>
+  <id>urn:uuid:f8b65823-4ec5-3a70-efc8-2b713aa63091</id>
+
+  <author>
+    <name>Lars Donner</name>
+    <uri>https://kaloffl.github.io/</uri>
+  </author>
+
+  <entry>
+    <title>random_float(min, max)</title>
+    <link href="https://kaloffl.github.io/0007.html"/>
+    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
+    <published>2022-06-15T23:57:08Z</published>
+    <summary></summary>
+  </entry>
+
+  <entry>
+    <title>How not to intercept a PWM signal</title>
+    <link href="https://kaloffl.github.io/0006.html"/>
+    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
+    <published>2022-06-12T00:00:00Z</published>
+    <summary></summary>
+  </entry>
+
+  <entry>
+    <title>Debugging Scanner Sombre [Part 2]</title>
+    <link href="https://kaloffl.github.io/0005.html"/>
+    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
+    <published>2022-04-10T00:00:00Z</published>
+    <summary></summary>
+  </entry>
+
+  <entry>
+    <title>Debugging Scanner Sombre [Part 1]</title>
+    <link href="https://kaloffl.github.io/0004.html"/>
+    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
+    <published>2022-04-09T00:00:00Z</published>
+    <summary></summary>
+  </entry>
+
+  <entry>
+    <title>intersect_lines() [Part 2]</title>
+    <link href="https://kaloffl.github.io/0003.html"/>
+    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
+    <published>2021-10-10T00:00:00Z</published>
+    <summary></summary>
+  </entry>
+
+  <entry>
+    <title>intersect_lines() [Part 1]</title>
+    <link href="https://kaloffl.github.io/0002.html"/>
+    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
+    <published>2021-10-10T00:00:00Z</published>
+    <summary></summary>
+  </entry>
+
+  <entry>
+    <title>random_float()</title>
+    <link href="https://kaloffl.github.io/0001.html"/>
+    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
+    <published>2021-01-27T00:00:00Z</published>
+    <summary></summary>
+  </entry>
+
+</feed>
