@@ -4,8 +4,8 @@
   <title>Lars' Website</title>
   <link rel="alternate" type="text/html" href="https://kaloffl.github.io/"/>
   <link rel="self" type="application/atom+xml" href="https://kaloffl.github.io/feed.xml"/>
-  <updated>2022-08-14T01:43:47Z</updated>
-  <id>urn:uuid:f8b65823-4ec5-3a70-efc8-2b713aa63091</id>
+  <updated>2022-08-14T00:00:00Z</updated>
+  <id>urn:uuid:ff735fb1-916e-4407-840b-307e3d55a8c7</id>
 
   <author>
     <name>Lars Donner</name>
@@ -15,57 +15,57 @@
   <entry>
     <title>random_float(min, max)</title>
     <link href="https://kaloffl.github.io/0007.html"/>
-    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
-    <published>2022-06-15T23:57:08Z</published>
-    <summary></summary>
+    <id>urn:uuid:bc926a89-1ec1-472d-8f0c-d23a9c0dd384</id>
+    <updated>2022-06-15T23:57:08Z</updated>
+    <summary>random_float(min, max)</summary>
   </entry>
 
   <entry>
     <title>How not to intercept a PWM signal</title>
-    <link href="https://kaloffl.github.io/0006.html"/>
-    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
-    <published>2022-06-12T00:00:00Z</published>
-    <summary></summary>
+    <link rel="alternate" href="https://kaloffl.github.io/0006.html"/>
+    <id>urn:uuid:d5267ed9-8d6f-4c4d-9369-f9eb8d2269ca</id>
+    <updated>2022-06-12T00:00:00Z</updated>
+    <summary>How not to intercept a PWM signal</summary>
   </entry>
 
   <entry>
     <title>Debugging Scanner Sombre [Part 2]</title>
-    <link href="https://kaloffl.github.io/0005.html"/>
-    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
-    <published>2022-04-10T00:00:00Z</published>
-    <summary></summary>
+    <link rel="alternate" href="https://kaloffl.github.io/0005.html"/>
+    <id>urn:uuid:d5267ed9-8d6f-4c4d-9369-f9eb8d2269ca</id>
+    <updated>2022-04-10T00:00:00Z</updated>
+    <summary>Debugging Scanner Sombre [Part 2]</summary>
   </entry>
 
   <entry>
     <title>Debugging Scanner Sombre [Part 1]</title>
-    <link href="https://kaloffl.github.io/0004.html"/>
-    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
-    <published>2022-04-09T00:00:00Z</published>
-    <summary></summary>
+    <link rel="alternate" href="https://kaloffl.github.io/0004.html"/>
+    <id>urn:uuid:965657e1-cb6f-4ad7-8130-d4e4c45abcc1</id>
+    <updated>2022-04-09T00:00:00Z</updated>
+    <summary>Debugging Scanner Sombre [Part 1]</summary>
   </entry>
 
   <entry>
     <title>intersect_lines() [Part 2]</title>
-    <link href="https://kaloffl.github.io/0003.html"/>
-    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
-    <published>2021-10-10T00:00:00Z</published>
-    <summary></summary>
+    <link rel="alternate" href="https://kaloffl.github.io/0003.html"/>
+    <id>urn:uuid:0a4c3ab9-14ac-4c2b-8a49-5ec172db8538</id>
+    <updated>2021-10-10T00:00:00Z</updated>
+    <summary>intersect_lines() [Part 2]</summary>
   </entry>
 
   <entry>
     <title>intersect_lines() [Part 1]</title>
-    <link href="https://kaloffl.github.io/0002.html"/>
-    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
-    <published>2021-10-10T00:00:00Z</published>
-    <summary></summary>
+    <link rel="alternate" href="https://kaloffl.github.io/0002.html"/>
+    <id>urn:uuid:ff735fb1-916e-4407-840b-307e3d55a8c7</id>
+    <updated>2021-10-10T00:00:00Z</updated>
+    <summary>intersect_lines() [Part 1]</summary>
   </entry>
 
   <entry>
     <title>random_float()</title>
-    <link href="https://kaloffl.github.io/0001.html"/>
-    <id>urn:uuid:4a7d8c3d-3bcf-4b10-b50a-64227c02b254</id>
-    <published>2021-01-27T00:00:00Z</published>
-    <summary></summary>
+    <link rel="alternate" href="https://kaloffl.github.io/0001.html"/>
+    <id>urn:uuid:dee4bcfe-83ec-405f-9fb5-10b7f7763a67</id>
+    <updated>2021-01-27T00:00:00Z</updated>
+    <summary>random_float()</summary>
   </entry>
 
 </feed>
