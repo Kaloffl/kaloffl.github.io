@@ -179,7 +179,7 @@ Of course many values in between these extremes are also possible to get smooth 
         <h3>Microcontrolling</h3>
         <p>
 How do we work with such a PWM signal?
-In general, your average microcontroller offers a bunch of options to deal with PWM signals and the <a href="https://www.microchip.com/en-us/product/ATmega32U4" target="_blank">AtMega32U4</a> chip on the Arduino Micro is no different.
+In general, your average microcontroller offers a bunch of options to deal with PWM signals and the <a href="https://www.microchip.com/en-us/product/ATmega32U4" target="_blank">ATmega32U4</a> chip on the Arduino Micro is no different.
 However, these options are bound to specific pins, so let's see what we can use on PD2 and PD3 as inputs.
         </p>
         <figure id="figure3">
@@ -192,10 +192,10 @@ OC4A | CLKO | ICP3 | PC7 ─╫13 └┬┬┬┬┘ 12╫─ PD6 | T1   | !OC4D
         TDI | ADC7 | PF7 ─╫A0  ┌──┐   9╫─ PB5 | OC1A | !OC4B | PCINT5 | ARC12
         TDO | ADC6 | PF6 ─╫A1  └──┘   8╫─ PB4 |      |       | PCINT4 | ADC11
         TMS | ADC5 | PF5 ─╫A2         7╫─ PE6 |      |       | INT6   | AIN0
-        TCK | ADC4 | PF4 ─╫A3 ┌────┐  6╫─ PD7 | T0   |  OC4D |        | ADC10
-              ADC1 | PF1 ─╫A4 │MEGA│  5╫─ PC6 | OC3A | !OC4A |        |
-              ADC0 | PF0 ─╫A5 │32U4│  4╫─ PD4 | ICP1 |       |        | ADC8
-                    n.c. ─╫   └────┘  3╫─ PD0 | SCL  |  OC0B | !INT0
+        TCK | ADC4 | PF4 ─╫A3┌──────┐ 6╫─ PD7 | T0   |  OC4D |        | ADC10
+              ADC1 | PF1 ─╫A4│ATMEGA│ 5╫─ PC6 | OC3A | !OC4A |        |
+              ADC0 | PF0 ─╫A5│ 32U4 │ 4╫─ PD4 | ICP1 |       |        | ADC8
+                    n.c. ─╫  └──────┘ 3╫─ PD0 | SCL  |  OC0B | !INT0
                     n.c. ─╫           2╫─ PD1 | SDA  |       | !INT1
                   5V out ─╫      ┌──┐  ╫─ GND
                    Reset ─╫      ╞══╡  ╫─ Reset
@@ -211,7 +211,7 @@ OC4A | CLKO | ICP3 | PC7 ─╫13 └┬┬┬┬┘ 12╫─ PD6 | T1   | !OC4D
 There are not many functions on these pins: <code>RX/TXD1</code> are for serial communications, which we don't need here.
 The other option is much more promising: the external interrupts on these pins can be used to run some code whenever the logical level changes between high and low.
 We will also need a way to get the current time while inside the interrupt, but Arduino already offers the <a href="https://www.arduino.cc/reference/en/language/functions/time/micros/" target="_blank"><code>micros()</code></a> function for that.
-With interrupts we should be careful to do as little work as possible, because the AtTMega32U4 does not support nested interrupts.
+With interrupts we should be careful to do as little work as possible, because the ATmega32U4 does not support nested interrupts.
 This means that while the program is inside an interrupt and the conditions for another, more important interrupt arise, the first one still has to complete before the next one can start.
         </p>
         <p>
@@ -543,6 +543,7 @@ But there are enough other things to fix elsewhere, maybe I'll find something el
       <section>
         <h2>Change-log</h2>
         <ul>
+          <li>2022-08-15 - Fixed more spelling.</li>
           <li>2022-06-15 - Fixed typos.</li>
           <li>2022-06-13 - Improved wording, fixed typos.</li>
           <li>2022-06-12 - Initial post.</li>

@@ -13,6 +13,14 @@
   </author>
 
   <entry>
+    <title>Switch from RSS to Atom feed</title>
+    <link href="https://kaloffl.github.io/0008.html"/>
+    <id>urn:uuid:66ff56af-7d0d-4310-849e-907d2735c155</id>
+    <updated>2022-08-15T23:57:08Z</updated>
+    <summary>Switch from RSS to Atom feed</summary>
+  </entry>
+
+  <entry>
     <title>random_float(min, max)</title>
     <link href="https://kaloffl.github.io/0007.html"/>
     <id>urn:uuid:bc926a89-1ec1-472d-8f0c-d23a9c0dd384</id>

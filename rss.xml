@@ -2,54 +2,60 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
  <channel>
   <title>Lars' Website</title>
-<atom:link href="https://kaloffl.github.io/rss.xml" rel="self" type="application/rss+xml" />
+  <atom:link href="https://kaloffl.github.io/rss.xml" rel="self" type="application/rss+xml" />
   <link>https://kaloffl.github.io</link>
   <description></description>
   <language>en-us</language>
-  <lastBuildDate>15 Jun 2022 00:00:00 +0000</lastBuildDate>
+  <lastBuildDate>15 Aug 2022 00:00:00 +0000</lastBuildDate>
 
- <item>
+  <item>
+   <title>Switch from RSS to Atom feed</title>
+   <guid>https://kaloffl.github.io/0008.html</guid>
+   <link>https://kaloffl.github.io/0008.html</link>
+   <pubDate>15 Aug 2022 00:00:00 +0000</pubDate>
+  </item>
+  <item>
    <title>random_float(min, max)</title>
    <guid>https://kaloffl.github.io/0007.html</guid>
    <link>https://kaloffl.github.io/0007.html</link>
    <pubDate>15 Jun 2022 00:00:00 +0000</pubDate>
-</item>
- <item>
+  </item>
+  <item>
    <title>How not to intercept a PWM signal</title>
    <guid>https://kaloffl.github.io/0006.html</guid>
    <link>https://kaloffl.github.io/0006.html</link>
    <pubDate>12 Jun 2022 00:00:00 +0000</pubDate>
-</item>
- <item>
+  </item>
+  <item>
    <title>Debugging Scanner Sombre [Part 2]</title>
    <guid>https://kaloffl.github.io/0005.html</guid>
    <link>https://kaloffl.github.io/0005.html</link>
    <pubDate>10 Apr 2022 00:00:00 +0000</pubDate>
-</item>
- <item>
+  </item>
+  <item>
    <title>Debugging Scanner Sombre [Part 1]</title>
    <guid>https://kaloffl.github.io/0004.html</guid>
    <link>https://kaloffl.github.io/0004.html</link>
    <pubDate>09 Apr 2022 00:00:00 +0000</pubDate>
-</item>
- <item>
+  </item>
+  <item>
    <title>intersect_lines() [Part 2]</title>
    <guid>https://kaloffl.github.io/0003.html</guid>
    <link>https://kaloffl.github.io/0003.html</link>
    <pubDate>10 Oct 2021 00:00:00 +0000</pubDate>
-</item>
- <item>
+  </item>
+  <item>
    <title>intersect_lines() [Part 1]</title>
    <guid>https://kaloffl.github.io/0002.html</guid>
    <link>https://kaloffl.github.io/0002.html</link>
    <pubDate>10 Oct 2021 00:00:00 +0000</pubDate>
-</item>
- <item>
+  </item>
+  <item>
    <title>random_float()</title>
    <guid>https://kaloffl.github.io/0001.html</guid>
    <link>https://kaloffl.github.io/0001.html</link>
    <pubDate>27 Jan 2021 00:00:00 +0000</pubDate>
-</item>
+  </item>
   
  </channel>
 </rss>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml"/>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <title>Switch from RSS to Atom feed - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>Switch from RSS to Atom feed</h2>
+        <div>First published: <time>2022-08-15</time></div>
+      </header>
+
+      <section>
+        <p>
+Here's a heads-up for anyone who subscribed to the RSS feed of this site.
+I've switched this site to use an Atom feed, which has a different URL than the previous RSS feed.
+This will be the last post published via RSS and the RSS feed will be delete some time in the future.
+So switch now to keep up with this high-octane thrill-ride of a blog.
+The new URL is linked at the top of the page.
+        </p>
+      </section>
+
+      <section>
+        <h3>Why?</h3>
+        <p>
+To be honest, when setting of this site I just quickly hacked together the RSS XML file by looking at feeds from other sites and copying the tags they used.
+It didn't even occur to me to check out the RSS 2.0 specification.
+Similarly it didn't occur to me that there might be better formats out there than RSS.
+While I heard of Atom before and many feeds I'm subscribed to use it, RSS was the name that stuck in my mind when it came to providing a machine readable feed for a blog.
+        </p>
+        <p>
+But then, one fateful day, yesterday to be precise, I came across an <a target="_blank" href="https://nullprogram.com/blog/2013/09/23/">article</a> that opened my eyes.
+And so I finally read the RSS spec and Atom RFC and converted my janky RSS feed to a RFC compliant Atom feed.
+It was pretty straight-forward except for one thing: IDs.
+Once again I didn't give IDs much thought before, but this time I wanted to do it right.
+For the IDs I could used the URLs of the posts again, but if I ever change the domain of this site, those IDs would be have to change as well, which defeats the purpose of an ID.
+But there's an alternative: UUIDs.
+Unique 128-bit integer encoded in hexadecimal with some dashes as 36 ASCII characters like <code>66ff56af-7d0d-4310-849e-907d2735c155</code>.
+When generating an UUID you're supposed to take the current time and some identifying information of your local machine and even clock settings into account to reduce the probability of collisions.
+Though for a blog you could also get away with just randomly choosing each hexadecimal character, just sayin'.
+        </p>
+      </section>
+
+      <section>
+        <h3>How?</h3>
+        <p>
+But it turns out that Windows provides an API for generating UUIDs, so I just used that.
+And by used I mean I quickly hacked together a tiny program that calls the API and prints the UUID string.
+Here it is:
+        </p>
+        <figure>
+          <code>
+            <pre>
+#include &lt;cstdio&gt;
+
+struct UUID
+{
+  char whatever[1028];
+};
+
+extern "C" long UuidCreate(UUID *Uuid);
+
+extern "C" long UuidToStringA(const UUID *Uuid, char **StringUuid);
+
+int main()
+{
+  UUID uuid;
+  UuidCreate(&uuid);
+
+  char *str;
+  UuidToStringA(&uuid, &str);
+
+  std::puts(str);
+
+  return 0;
+}
+            </pre>
+          </code>
+        </figure>
+        <p>
+Yes, I prefer to copy the function declarations over including the windows header file.
+        </p>
+        <p>
+To get this to build you'll have to link against <code>rpcrt4</code> in addition to the usual windows libraries.
+        </p>
+      </section>
+
+      <section>
+        <h3>When?</h3>
+        <p>
+NOW!
+Now is your last chance!
+        </p>
+      </section>
+
+      <section>
+        <h3>Where?</h3>
+        <p>
+https://kaloffl.github.io/feed.xml
+        </p>
+      </section>
+
+      <section>
+        <h3>Who?</h3>
+        <p>
+Everybody
+        </p>
+      </section>
+
+      <section>
+        <h3>What?</h3>
+        <p>
+Yes.
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2022-08-15 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
