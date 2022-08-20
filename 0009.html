@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml"/>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <title>How is Quaternion formed? - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>How is Quaternion formed?</h2>
+        <div>First published: <time>2022-08-20</time></div>
+      </header>
+
+      <section>
+        <p>
+It's a great feeling when you finally understand something so deeply, that you don't have to remember it anymore.
+When you grasp the basics so well that you can just re-invent it whenever you need.
+This is what recently happened to me with Quaternions and it can happen to you as well.
+        </p>
+        <p>
+There have already been countless pieces written about Quaternions and just recently I read a comment complaining about this and that none of them add anything.
+And yet here we are.
+I hope I can offer a different perspective through Geometric Algebra, and maybe some of my enthusiasm will make it into this post and to you, dear reader. 
+        </p>
+        <p>
+In Geometric Algebra circles Quaternions are also called Rotors, which might be a better name because they generalize to any dimension, at which point they need a different number of components, invalidating the "Quat" part.
+I'll stick with the more established term for now though.
+I'll be assuming no prior knowledge of GA as we're going to build everything from the ground up.
+        </p>
+      </section>
+
+      <section>
+        <h3>But first: Vectors</h3>
+        <p>
+If you've done anything with vectors before, you've probably seen them as a bunch of numbers written in a column surrounded by parenthesis.
+While it might make sense at first to separate the dimensions from each other like Cartesian coordinates, it's annoying when you want to do algebra on them.
+Therefore we'll be using a different notation instead:
+        </p>
+        <figure>
+          <pre>
+Old and busted:
+    ┌ ┐
+    │x│
+<b>v</b> = │y│
+    │z│
+    └ ┘
+
+New<sup>1</sup> hotness:
+<b>v</b> = x * <b>e<sub>1</sub></b> + y * <b>e<sub>2</sub></b> + z * <b>e<sub>3</sub></b>
+          </pre>
+        </figure>
+        <p>
+Okay, now everything is in one expression, but what are those weird <code><b>e<sub>i</sub></b></code> that I threw in there?
+I like to think of them as makers that tell you which part of the vector expression belong to which dimension.
+Here's a simple example showing vector addition:
+        </p>
+        <figure>
+          <pre>
+<b>v<sub>1</sub></b> = a * <b>e<sub>1</sub></b> + b * <b>e<sub>2</sub></b> + c * <b>e<sub>3</sub></b> = a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b>
+<b>v<sub>2</sub></b> = x * <b>e<sub>1</sub></b> + y * <b>e<sub>2</sub></b> + z * <b>e<sub>3</sub></b> = x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>
+
+<b>v<sub>1</sub></b> + <b>v<sub>2</sub></b>
+
+// expand <b>v<sub>1</sub></b> and <b>v<sub>2</sub></b>
+= (a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b>) + (x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>)
+
+// remove parenthesis
+= a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b> + x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>
+
+// sort terms
+= a<b>e<sub>1</sub></b> + x<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + y<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b> + z<b>e<sub>3</sub></b>
+
+// merge common terms
+= (a + x)<b>e<sub>1</sub></b> + (b + y)<b>e<sub>2</sub></b> + (c + z)<b>e<sub>3</sub></b>
+          </pre>
+        </figure>
+        <p>
+And what we get is component-wise addition, as you would expect from vectors.
+But this time it was completely driven by boring old middle-school algebra.
+Let's try another one!
+Subtraction and scalar multiplication would be too easy, so let's see what happens when you multiply two vectors!
+        </p>
+        <figure>
+          <pre>
+<b>v<sub>1</sub></b> = a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b>
+<b>v<sub>2</sub></b> = x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>
+
+<b>v<sub>1</sub></b> * <b>v<sub>2</sub></b>
+
+// expand <b>v<sub>1</sub></b> and <b>v<sub>2</sub></b>
+= (a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b>) * (x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>)
+
+// distribute
+= (a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b>) * x<b>e<sub>1</sub></b>
++ (a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b>) * y<b>e<sub>2</sub></b>
++ (a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b>) * z<b>e<sub>3</sub></b>
+
+// distribute even harder
+= ax<b>e<sub>1</sub></b><b>e<sub>1</sub></b> + bx<b>e<sub>2</sub></b><b>e<sub>1</sub></b> + cx<b>e<sub>3</sub></b><b>e<sub>1</sub></b>
++ ay<b>e<sub>1</sub></b><b>e<sub>2</sub></b> + by<b>e<sub>2</sub></b><b>e<sub>2</sub></b> + cy<b>e<sub>3</sub></b><b>e<sub>2</sub></b>
++ az<b>e<sub>1</sub></b><b>e<sub>3</sub></b> + bz<b>e<sub>2</sub></b><b>e<sub>3</sub></b> + cz<b>e<sub>3</sub></b><b>e<sub>3</sub></b>
+          </pre>
+        </figure>
+        <p>
+Okay, this tuns out to be not as simple: we can't just separate out the <code><b>e<sub>i</sub></b></code>s when they are multiplied together like that.
+So it's time to reveal some new rules about this <code><b>e<sub>i</sub></b></code>s:
+        </p>
+        <figure>
+          <pre>
+<b>e<sub>i</sub></b> * <b>e<sub>j</sub></b> = -(<b>e<sub>j</sub></b> * <b>e<sub>i</sub></b>)  if  i != j
+<b>e<sub>i</sub></b> * <b>e<sub>i</sub></b> = 1
+        </pre>
+      </figure>
+      <p>
+So we can't just swap around products of <code><b>e<sub>i</sub></b></code>s like regular numbers, we have to negate them whenever we do.
+Swapping sums of them is unaffected though.
+Let's see if this helps us with the multiplication above.
+      </p>
+        <figure>
+          <pre>
+  ax<b>e<sub>1</sub></b><b>e<sub>1</sub></b> + bx<b>e<sub>2</sub></b><b>e<sub>1</sub></b> + cx<b>e<sub>3</sub></b><b>e<sub>1</sub></b>
++ ay<b>e<sub>1</sub></b><b>e<sub>2</sub></b> + by<b>e<sub>2</sub></b><b>e<sub>2</sub></b> + cy<b>e<sub>3</sub></b><b>e<sub>2</sub></b>
++ az<b>e<sub>1</sub></b><b>e<sub>3</sub></b> + bz<b>e<sub>2</sub></b><b>e<sub>3</sub></b> + cz<b>e<sub>3</sub></b><b>e<sub>3</sub></b>
+
+// eliminate <b>e<sub>i</sub></b> that square to 1
+= ax + bx<b>e<sub>2</sub></b><b>e<sub>1</sub></b> + cx<b>e<sub>3</sub></b><b>e<sub>1</sub></b>
++ ay<b>e<sub>1</sub></b><b>e<sub>2</sub></b> + by + cy<b>e<sub>3</sub></b><b>e<sub>2</sub></b>
++ az<b>e<sub>1</sub></b><b>e<sub>3</sub></b> + bz<b>e<sub>2</sub></b><b>e<sub>3</sub></b> + cz
+
+// swap <b>e</b> around for consistent order, don't forget the -
+= ax - bx<b>e<sub>1</sub></b><b>e<sub>2</sub></b> + cx<b>e<sub>3</sub></b><b>e<sub>1</sub></b>
++ ay<b>e<sub>1</sub></b><b>e<sub>2</sub></b> + by - cy<b>e<sub>2</sub></b><b>e<sub>3</sub></b>
+- az<b>e<sub>3</sub></b><b>e<sub>1</sub></b> + bz<b>e<sub>2</sub></b><b>e<sub>3</sub></b> + cz
+
+// sort and combine terms
+= (ax + by + cz) + (ay - bx)<b>e<sub>1</sub></b><b>e<sub>2</sub></b> + (cx - az)<b>e<sub>3</sub></b><b>e<sub>1</sub></b> + (bz - cy)<b>e<sub>2</sub></b><b>e<sub>3</sub></b>
+          </pre>
+        </figure>
+        <p>
+Now we have four distinct parts: the scalar part in the front that looks a lot like a vector dot product, and the three pieces that each have a unique combination of those <code><b>e<sub>i</sub></b></code>s stuck to them.
+That's clearly not a vector, so what's the point of this?
+Well, what we just created as the product of two vectors is a Quaternion.
+Just from normal algebra and two additional rules.
+And we can just keep working on it with the same algebra, nothing else required.
+Quaternions are often described as having a scalar and vector part.
+But seeing as the non-scalar parts here doesn't really consist of simple vectors, I'll be calling it the bivector part.
+        </p>
+        <p>
+But the definition of Quaternions says that the "basic quaternions" square to -1 and wasn't one of the rules above that they square to 1?
+Not quite, that rule above is just about a single vector component <code><b>e<sub>i</sub></b></code>.
+Here's what happens when we square a bivector component <code><b>e<sub>i</sub></b><b>e<sub>j</sub></b></code>:
+        </p>
+        <figure>
+          <pre>
+(<b>e<sub>i</sub></b><b>e<sub>j</sub></b>)<sup>2</sup>
+= <b>e<sub>i</sub></b><b>e<sub>j</sub></b><b>e<sub>i</sub></b><b>e<sub>j</sub></b>  // expand
+= -<b>e<sub>i</sub></b><b>e<sub>i</sub></b><b>e<sub>j</sub></b><b>e<sub>j</sub></b> // swap
+= -1       // eliminate
+          </pre>
+        </figure>
+        <p>
+In order for the vector components to square to 1, they first have to be swapped to be next to each other.
+And this swapping requires us to negate the product, thus producing the correct -1 as a result.
+        </p>
+        <p>
+Quaternions encode rotations, so what rotation does this one have?
+If we take another look at the bivector part, it looks an awful lot like the vector cross-product.
+And that one is known to take two vectors<sup>2</sup> and create a third vector that is perpendicular to the first two.
+So it's safe to assume that this Quaternion will rotate around an axis perpendicular to <code><b>v<sub>1</sub></b></code> and <code><b>v<sub>2</sub></b></code>.
+        </p>
+        <p>
+And rotate by how much?
+Let's look at the scalar part for that.
+If you look up how to build a Quaternion that rotates by the angle <code>θ</code> around some axis, you'll find formulas that tell you to set the scalar part to <code><i>cos</i>(θ/2)</code>.
+If we assume for a moment that our two initial vectors are of unit length, then the dot product of the two would be the cosine of the angle between them.
+Therefore it seems that the Quaternion we created as the product of two vectors would rotate by twice the angle between them.
+We'll see that the unit length part doesn't matter a bit later on.
+        </p>
+      </section>
+
+      <section>
+        <h3>Rotation</h3>
+        <p>
+In order to rotate a vector by a Quaternion the internet tells us that we first should turn the vector into a Quaternion with the scalar part being 0.
+But we have this new freedom that we can just multiply vectors with anything and let the algebra guide us, so let's see what happens when we multiply a Quaternion and a vector!
+I'll shorten <code><b>e<sub>i</sub></b><b>e<sub>j</sub></b></code> to just <code><b>e<sub>ij</sub></b></code>.
+        </p>
+        <figure>
+          <pre>
+// Definitions
+<b>q</b> = a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>
+<b>v</b> = x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>
+
+<b>q</b> * <b>v</b>
+
+// Expand
+= (a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>) * (x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>)
+
+// Distribute
+= ax<b>e<sub>1</sub></b> + bx<b>e<sub>121</sub></b> + cx<b>e<sub>311</sub></b> + dx<b>e<sub>231</sub></b>
++ ay<b>e<sub>2</sub></b> + by<b>e<sub>122</sub></b> + cy<b>e<sub>312</sub></b> + dy<b>e<sub>232</sub></b>
++ az<b>e<sub>3</sub></b> + bz<b>e<sub>123</sub></b> + cz<b>e<sub>313</sub></b> + dz<b>e<sub>233</sub></b>
+
+// Simplify
+= ax<b>e<sub>1</sub></b> - bx<b>e<sub>2</sub></b> + cx<b>e<sub>3</sub></b> + dx<b>e<sub>123</sub></b>
++ ay<b>e<sub>2</sub></b> + by<b>e<sub>1</sub></b> + cy<b>e<sub>123</sub></b> - dy<b>e<sub>3</sub></b>
++ az<b>e<sub>3</sub></b> + bz<b>e<sub>123</sub></b> - cz<b>e<sub>1</sub></b> + dz<b>e<sub>2</sub></b>
+
+// Sort and merge terms
+= (ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>
+          </pre>
+        </figure>
+        <p>
+Okay, we almost get a vector out of it, but it has this weird fourth component, which is a trivector.
+This is getting out of hand!
+But let's not lose hope; the next step in Quaternion rotation is to multiply by the conjugate of the Quaternion, which is a fancy word for "negate the bivector part".
+The trivector part above only contains coefficients from the bivector part of the Quaternion, so if we negate it in the next step it might cancel out.
+        </p>
+        <figure>
+          <pre>
+// Conjugate:
+~<b>q</b> = a - b<b>e<sub>12</sub></b> - c<b>e<sub>31</sub></b> - d<b>e<sub>23</sub></b>
+
+<b>q</b> * <b>v</b> * ~<b>q</b>
+
+= ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>) * (a - b<b>e<sub>12</sub></b> - c<b>e<sub>31</sub></b> - d<b>e<sub>23</sub></b>)
+
+= ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>)a
+- ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>)b<b>e<sub>12</sub></b>
+- ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>)c<b>e<sub>31</sub></b>
+- ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>)d<b>e<sub>23</sub></b>
+
+= (ax + by - cz)a<b>e<sub>1</sub></b>   + (ay - bx + dz)a<b>e<sub>2</sub></b>   + (az + cx - dy)a<b>e<sub>3</sub></b>   + (dx + cy + bz)a<b>e<sub>123</sub></b>
+- (ax + by - cz)b<b>e<sub>112</sub></b> - (ay - bx + dz)b<b>e<sub>212</sub></b> - (az + cx - dy)b<b>e<sub>312</sub></b> - (dx + cy + bz)b<b>e<sub>12312</sub></b>
+- (ax + by - cz)c<b>e<sub>131</sub></b> - (ay - bx + dz)c<b>e<sub>231</sub></b> - (az + cx - dy)c<b>e<sub>331</sub></b> - (dx + cy + bz)c<b>e<sub>12331</sub></b>
+- (ax + by - cz)d<b>e<sub>123</sub></b> - (ay - bx + dz)d<b>e<sub>223</sub></b> - (az + cx - dy)d<b>e<sub>323</sub></b> - (dx + cy + bz)d<b>e<sub>12323</sub></b>
+
+= (a<sup>2</sup>x + bay - caz)<b>e<sub>1</sub></b>   + (a<sup>2</sup>y - bax + daz)<b>e<sub>2</sub></b>   + (a<sup>2</sup>z + cax - day)<b>e<sub>3</sub></b>   + (dax + cay + baz)<b>e<sub>123</sub></b>
+- (abx + b<sup>2</sup>y - cbz)<b>e<sub>2</sub></b>   + (aby - b<sup>2</sup>x + dbz)<b>e<sub>1</sub></b>   - (abz + cbx - dby)<b>e<sub>123</sub></b> + (dbx + cby + b<sup>2</sup>z)<b>e<sub>3</sub></b>
++ (acx + bcy - c<sup>2</sup>z)<b>e<sub>3</sub></b>   - (acy - bcx + dcz)<b>e<sub>123</sub></b> - (acz + c<sup>2</sup>x - dcy)<b>e<sub>1</sub></b>   + (dcx + c<sup>2</sup>y + bcz)<b>e<sub>2</sub></b>
+- (adx + bdy - cdz)<b>e<sub>123</sub></b> - (ady - bdx + d<sup>2</sup>z)<b>e<sub>3</sub></b>   + (adz + cdx - d<sup>2</sup>y)<b>e<sub>2</sub></b>   + (d<sup>2</sup>x + cdy + bdz)<b>e<sub>1</sub></b>
+
+= (a<sup>2</sup>x + aby - acz + aby - b<sup>2</sup>x + bdz - acz - c<sup>2</sup>x + cdy + d<sup>2</sup>x + cdy + bdz)<b>e<sub>1</sub></b>
++ (a<sup>2</sup>y - abx + adz - abx - b<sup>2</sup>y + bcz + cdx + c<sup>2</sup>y + bcz + adz + cdx - d<sup>2</sup>y)<b>e<sub>2</sub></b>
++ (a<sup>2</sup>z + acx - ady + bdx + bcy + b<sup>2</sup>z + acx + bcy - c<sup>2</sup>z - ady + bdx - d<sup>2</sup>z)<b>e<sub>3</sub></b>
++ (adx + acy + abz - abz - bcx + bdy - acy + bcx - cdz - adx - bdy + cdz)<b>e<sub>123</sub></b>
+
+= ((a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> + d<sup>2</sup>)x + (ab + cd)2y + (bd - ac)2z)<b>e<sub>1</sub></b>
++ ((cd - ab)2x + (a<sup>2</sup> - b<sup>2</sup> + c<sup>2</sup> - d<sup>2</sup>)y + (ad + bc)2z)<b>e<sub>2</sub></b>
++ ((ac + bd)2x + (bc - ad)2y + (a<sup>2</sup> + b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>)z)<b>e<sub>3</sub></b>
+          </pre>
+        </figure>
+        <p>
+Phew, that took a while to get right.
+But the hard work payed off: the result is a vector.
+And when you compare it with a reference implementation of vector-Quaternion rotation, you'll find them eerily similar.
+Once again, just the algebra and the two new rules brought us form vectors to Quaternions to vector rotation.
+And if you ever find yourself on a deserted island with no internet you will be able to derive all of this again yourself!
+        </p>
+        <p>
+Though that conjugate is a bit weird.
+And doesn't Quaternion rotation require normalized Quaternions?
+Well, we won't have to worry about both of these things if we just change the formula for Quaternion rotation a bit: <code><b>q</b>*<b>v</b>/<b>q</b></code>.
+        </p>
+        <p>
+Wait what?
+Quaternion division?
+Okay, this article is already getting quite long, so I'll not go into all the details and just say <code><b>q</b><sup>-1</sup> = ~<b>q</b>/(|<b>q</b>|<sup>2</sup>)</code>.
+You can check yourself that any Quaternion divided by itself will be 1 (except division by 0 of course).
+The <code>|<b>q</b>|<sup>2</sup></code> thing is called the quadrature and will help us out again later.
+It's defined as <code>a<sup>2</sup> + b<sup>2</sup> + c<sup>2</sup> + d<sup>2</sup></code>.
+        </p>
+        <p>
+Serendipitously this tweak to the rotation formula also lifts the requirement for our initial vectors to be of unit length.
+You can multiply two vectors of any nonzero length and get a Quaternion that isn't normalized and it still works, because the normalization is now build into the rotation.
+        </p>
+      </section>
+      <section>
+        <h3>Prepare for trouble, make it double</h3>
+        <p>
+Now to finally get back to the quirk we found above: the Quaternion we get by multiplying two vectors rotates by twice the angle.
+How do we make it just once the angle?
+Dividing by 2 doesn't work because it scales the whole Quaternion but leaves the rotation unaffected.
+So let's look at the opposite problem first: how would we double a rotation?
+We rotate twice of course, like so: <code><b>q</b>*<b>q</b>*<b>v</b>/<b>q</b>/<b>q</b></code>.
+That looks an awful lot like squaring, so to halve a rotation we have to take the square root.
+        </p>
+        <p>
+How do we take the square root of a four-dimensional entity like a Quaternion?
+Let's first look at how the square of a Quaternion looks like:
+        </p>
+        <figure>
+          <pre>
+(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>)<sup>2</sup>
+
+= (a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>)(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>)
+
+= a(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>) + b<b>e<sub>12</sub></b>(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>) + c<b>e<sub>31</sub></b>(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>) + d<b>e<sub>23</sub></b>(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>)
+
+= a<sup>2</sup> + ab<b>e<sub>12</sub></b> + ac<b>e<sub>31</sub></b> + ad<b>e<sub>23</sub></b>
++ ab<b>e<sub>12</sub></b> + b<sup>2</sup><b>e<sub>1212</sub></b> + bc<b>e<sub>1231</sub></b> + bd<b>e<sub>1223</sub></b>
++ ac<b>e<sub>31</sub></b> + bc<b>e<sub>3112</sub></b> + c<sup>2</sup><b>e<sub>3131</sub></b> + cd<b>e<sub>3123</sub></b>
++ ad<b>e<sub>23</sub></b> + bd<b>e<sub>2312</sub></b> + cd<b>e<sub>2331</sub></b> + d<sup>2</sup><b>e<sub>2323</sub></b>
+
+= a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>
++ (ab + ab + cd - cd)<b>e<sub>12</sub></b>
++ (ac + ac + bd - bd)<b>e<sub>31</sub></b>
++ (ad + bc + ad - bc)<b>e<sub>23</sub></b>
+
+= (a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>) + 2ab<b>e<sub>12</sub></b> + 2ac<b>e<sub>31</sub></b> + 2ad<b>e<sub>23</sub></b>
+          </pre>
+        </figure>
+        <p>
+Good, squaring a Quaternion gives us another Quaternion, so the square root should do the same.
+And more good news: if the square root of a Quaternion is another Quaternion, we have to find 4 unknowns.
+And if we take the four components of the Quaternion square above we have 4 equations, so a solution seems plausible.
+        </p>
+        <figure>
+          <pre>
+<b>q</b> = a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>
+<b>q</b><sup>2</sup> = <b>r</b> = x + y<b>e<sub>12</sub></b> + z<b>e<sub>31</sub></b> + w<b>e<sub>23</sub></b>
+
+x = a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>
+y = 2ab
+z = 2ac
+w = 2ad
+
+|<b>r</b>|<sup>2</sup> = |<b>q</b>|<sup>4</sup>
+<i>sqrt</i>(|<b>r</b>|<sup>2</sup>) = |<b>q</b>|<sup>2</sup> = a<sup>2</sup> + b<sup>2</sup> + c<sup>2</sup> + d<sup>2</sup>
+
+x + <i>sqrt</i>(|<b>r</b>|<sup>2</sup>) = a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup> + a<sup>2</sup> + b<sup>2</sup> + c<sup>2</sup> + d<sup>2</sup> = 2a<sup>2</sup>
+
+a = <i>sqrt</i>((x + <i>sqrt</i>(|r|<sup>2</sup>)) / 2)
+b = y / (2a)
+c = z / (2a)
+d = w / (2a)
+          </pre>
+        </figure>
+        <p>
+See, I told you the quadrature would come in handy again!
+Though I've sneaked (snook?) that <code>|<b>r</b>|<sup>2</sup> = |<b>q</b>|<sup>4</sup></code> in there that you'll have to check for yourself.
+But now we can finally rotate exactly by the angle between two vectors: <code><b>q</b> = <i>sqrt</i>(<b>v<sub>1</sub></b> * <b>v<sub>2</sub></b>)</code>.
+Which of the vectors is left and which is right is important, swapping them will invert the rotation.
+        </p>
+        <p>
+There is so much more to explore, but this article is getting quite long, so I'll stop here for today.
+Does GA explain why we have to "sandwich" the vector we want to rotate?
+What if we have an angle and axis we want to rotate by instead of two vectors?
+How does this look in lower or higher dimensions which I mentioned in the beginning with Rotors?
+We'll get to that next time, I hope.
+        </p>
+      </section>
+
+      <section>
+        <h3>Footnotes</h3>
+        <p> 
+1: The second notation is actually the older of the two as far as I can tell.
+It mimics the notation used by Hamilton to describe Quaternions, which turn out to be older than vectors.
+Who'd've thunk!
+        </p>
+        <p>
+2: In 3D only!
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2022-08-20 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
