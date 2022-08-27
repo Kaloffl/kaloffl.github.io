@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml"/>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <title>But not that volatile - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>But not that volatile</h2>
+        <div>First published: <time>2022-08-27</time></div>
+      </header>
+
+      <section>
+        <p>
+A recent <a href="https://nitter.net/AllenWebster4th/status/1562894505174790144">discussion on twitter</a> inspired me to look through the uses of <code>volatile</code> in my code.
+And while a search for this keyword in my desktop code didn't turn up anything meaningful, there were quite a few hits in code for embedded micro-controllers.
+After looking through this code I came to the conclusion that even there the use of this keyword is not ideal.
+In this post I'll pick out one example to show why.
+        </p>
+      </section>
+
+      <section>
+        <h3>Why use <code>volatile</code> in the first place?</h3>
+        <p>
+In the uses I found, the <code>volatile</code> keyword is most often placed as a type qualifier in front of global variables.
+The goal is to force the compiler to never cache these variables in registers and re-read them from memory whenever they're used.
+This might seem very inefficient but has a good reason:
+in code that makes use of interrupts you have to life in constant fear that at any point during the execution, the program might stop whatever it is doing, jump to a a different function (the ISR), modify variables, and then return to what it was doing before.
+Of course we know what variables might get modified, since we can look into the ISR, so really we just have to be careful when interacting with those variables.
+And one easy solution is to tell the compiler to always read the freshest state of those variables from memory, problem solved!
+Keep in mind though that volatile doesn't make those reads atomic, so if you're on a 8-bit processor and read a 16-bit value you'll need additional protection.
+        </p>
+      </section>
+
+      <section>
+        <h3>The example</h3>
+        <p>
+The example I've chosen is from a sensor that measures rotational speed and direction via a <a href="https://en.wikipedia.org/wiki/Incremental_encoder#Quadrature_outputs">quadrature encoder</a>.
+The encoder is connected to a 8-bit micro-controller where it triggers an interrupt whenever it detects a certain fixed increment of rotation.
+This means, the faster the rotation, the more interrupts we get per second, until at some point the micro-controller can't keep up and misses interrupts.
+So it is important to figure out the highest reasonable rotational speed and design around that.
+The interrupt increments a counter, the value of which we want to send out roughly every 10ms over some bus to another chip.
+With the highest possible speed the counter would get thousands of increments in that time, so a 16-bit variable would be necessary.
+To keep the sensor-ISR as fast as possible, we implemented a 2-step approach: the sensor-ISR uses a single byte counter, and a timer-ISR periodically comes by, adds the count to a 16-bit variable and clears the counter. 
+To deal with the atomicity problem mentioned above, a ping-pong-buffer is used: one buffer for reading one for writing, switching around every 10ms.
+Here is the relevant code, you can also check it out in the <a href="https://godbolt.org/z/a4b5sG5EM">Compiler Explorer</a>:
+        </p>
+        <figure>
+          <pre>
+#include &lt;avr/io.h&gt;
+#include &lt;avr/interrupt.h&gt;
+
+// Global variables
+volatile int16_t ticks_accumulator[2] = {};
+volatile int8_t  ticks = {};
+volatile uint8_t timer_counter = 0;
+volatile uint8_t send_ticks = 0;
+
+// Pin interrupt triggered by external sensor
+ISR(INT0_vect) {
+    int8_t sign = -1;
+    if ((PIND >> PD0) & 1) sign = -sign;
+    if ((PIND >> PD1) & 1) sign = -sign;
+    ticks += sign;
+}
+
+// Timer interrupt triggered every 0.624ms
+ISR(TIMER2_COMP_vect) {
+    uint8_t index = (timer_counter & 0x10) ? 1 : 0;
+    ticks_accumulator[index] += ticks;
+    ticks = 0;
+    
+    // every 16 times (9.984ms)
+    if ((timer_counter & 0x0F) == 0x0F) {
+        send_ticks = 1;
+    }
+    ++timer_counter;
+}
+
+// unimportant
+void setup();
+void send(int16_t *data);
+
+// Main entry point into code
+int main() {
+    setup();
+    while (1) {
+        if (send_ticks) {
+            int16_t values;
+            send_ticks = 0;
+
+            uint8_t index = (timer_counter & 0x10) ? 1 : 0;
+            values = ticks_accumulator[index];
+            ticks_accumulator[index] = 0;
+            send(&values);
+        }
+    }
+}
+          </pre>
+        </figure>
+        <p>
+As a side-note: operations like <code>+=</code> and <code>++</code> on <code>volatile</code> variables have been deprecated in C++20, hence the warnings in Compiler Explorer.
+        </p>
+        <p>
+A good example why putting <code>volatile</code> directly on the variable is not ideal can be seen with <code>timer_counter</code> in the timer ISR.
+Here is the assembly:
+        </p>
+        <figure>
+          <pre>
+__vector_9:                     // ISR(TIMER2_COMP_vect) {
+        in   r18,   __RAMPZ__
+        push r18
+        push r24
+        push r25
+        push r30
+        push r31
+        <b>lds  r24,   timer_counter</b>
+        lds  r18,   ticks
+        bst  r24,   4              // timer_counter & 0x10
+        clr  r30     
+        bld  r30,   0              // ? 1 : 0
+        ldi  r31,   0
+        lsl  r30
+        rol  r31
+        subi r30,   lo8(-(ticks_accumulator)) // 
+        sbci r31,   hi8(-(ticks_accumulator)) // ticks_accumulator[index]
+        ld   r24,   Z
+        ldd  r25,   Z+1
+        add  r24,   r18           // 
+        adc  r25,   __zero_reg__  // +=
+        sbrc r18,   7
+        dec  r25
+        std  Z+1,   r25
+        st   Z,     r24
+        sts  ticks, __zero_reg__  // ticks = 0;
+        <b>lds  r24,   timer_counter</b>  // 
+        andi r24,   lo8(15)        // if ((timer_counter & 0x0F) == 0x0F) {
+        cpi  r24,   lo8(15)        // 
+        breq .L7
+.L6:
+        <b>lds  r24,           timer_counter</b>  // 
+        subi r24,           lo8(-(1))      // ++timer_counter;
+        sts  timer_counter, r24            // 
+        pop  r31
+        pop  r30
+        pop  r25
+        pop  r24
+        pop  r18
+        out  __RAMPZ__,     r18
+        reti
+.L7:
+        ldi  r24,        lo8(1) // 
+        sts  send_ticks, r24    // send_ticks = 1;
+        rjmp .L6
+          </pre>
+        </figure>
+        <p>
+Great, for some reason the compiler refuses to use the <code>bst</code> instruction to directly write a 0 or 2 byte offset, instead it writes 0 or 1 and then does a 16-bit shift.
+Compilers love leaving jokes like these around the machine-code, so you should definitely read through it from time to time to have a laugh!
+        </p>
+        <p>
+But back on topic.
+What I actually wanted to discuss is the fact that this code loads <code>timer_counter</code> three times.
+No other function in this program modifies this variable, so it can only be changed here at the end of the interrupt.
+But since the variable itself is marked as <code>volatile</code>, the compiler dutifully generated loads for every place the variable is used.
+        </p>
+        <p>
+The reason the variable was marked as <code>volatile</code> in the first place is to make sure that <code>main</code> doesn't cache it.
+But the heavy-handed <code>volatile</code> applies everywhere, causing unnecessary overhead.
+The only place that such a catch-all <code>volatile</code> makes sense is for variables that are changed not by code but by the hardware itself:
+for example the <code>PIND</code> register used in the sensor interrupt.
+This register changes depending on the voltage on a hardware pin, which truly could change at any time during execution.
+        </p>
+      </section>
+      <section>
+        <h3>The alternative</h3>
+        <p>
+So what we really want is not a volatile type, but a way to force the compiler to generate load instructions.
+A way to achieve this is to cast the variable in question to be volatile in those places where we want to guarantee that it is loaded from memory.
+All we need is a simple macro:
+        </p>
+        <figure>
+          <pre>
+#define force_load(x) (*(volatile __typeof(x)*)&(x))
+          </pre>
+        </figure>
+        <p>
+It takes the address of the thing we want to read, casts it to be volatile and then dereferences it.
+Simple as that.
+        </p>
+        <p>
+And with that we can remove the volatile declarations from the global variables and instead use <code>force_load</code> in all the places that need it. 
+        </p>
+        <figure>
+          <pre>
+#include &lt;avr/io.h&gt;
+#include &lt;avr/interrupt.h&gt;
+
+#define force_load(x) (*(volatile __typeof(x)*)&(x))
+
+// Global variables
+int16_t ticks_accumulator[2] = {};
+int8_t  ticks = {};
+uint8_t timer_counter = 0;
+uint8_t send_ticks = 0;
+
+// Pin interrupt triggered by external sensor
+ISR(INT0_vect) {
+    int8_t sign = -1;
+    if ((PIND >> PD0) & 1) sign = -sign;
+    if ((PIND >> PD1) & 1) sign = -sign;
+    ticks += sign;
+}
+
+// Timer interrupt triggered every 0.624ms
+ISR(TIMER2_COMP_vect) {
+    uint8_t index = (timer_counter & 0x10) ? 1 : 0;
+    ticks_accumulator[index] += ticks;
+    ticks = 0;
+    
+    // every 16 times (9.984ms)
+    if ((timer_counter & 0x0F) == 0x0F) {
+        send_ticks = 1;
+    }
+    timer_counter += 1;
+}
+
+// unimportant
+void setup();
+void send(int16_t *data);
+
+// Main entry point into code
+int main() {
+    setup();
+    while (1) {
+        if (force_load(send_ticks)) {
+            int16_t values;
+            send_ticks = 0;
+
+            uint8_t index = (force_load(timer_counter) & 0x10) ? 1 : 0;
+            values = force_load(ticks_accumulator[index]);
+            ticks_accumulator[index] = 0;
+            send(&values);
+        }
+    }
+}
+          </pre>
+        </figure>
+        <p>
+You might have noticed, that only the <code>main</code> function makes use of this new macro.
+The reason is, that the interrupts have no way to cache variables long-term, so they have to reload the values every time they are called anyways.
+And since this chip doesn't support nested interrupts, there is no way that for example the sensor ISR could be called while the timer ISR is running. 
+        </p>
+        <p>
+And to prove that the use of this macro is necessary, here is part of the main function with and without the macro:
+        </p>
+        <figure>
+          <pre>
+
+main:                                       │  main:
+    ...                                     │          ...
+    ldi r16,lo8(send_ticks)                 │  .L10:
+    ldi r17,hi8(send_ticks)                 │          lds r24,send_ticks
+    ...                                     │  .L9:
+.L9:                                        │          tst r24
+    movw r30,r16                            │          breq .L9
+    ld r24,Z      /* Z = ((r31<<8)|r30) */  │          sts send_ticks,__zero_reg__
+    tst r24                                 │          ...
+    breq .L9                                │          rjmp .L10
+    sts send_ticks,__zero_reg__             │  
+    ...                                     │
+    rjmp .L9                                │
+          </pre>
+        </figure>
+        <p>
+Yup, without the forced load the compiler decided that if the variable is 0 once, it'll always be 0, no need to check again (though the <code>tst</code> instruction is repeated every time).
+        </p>
+        <p>
+Oh and one last thing: the timer ISR that we looked at earlier now indeed keeps the value of <code>timer_counter</code> in a register after loading it just once.
+As a consequence though, one more register is used in the ISR, which meas one more <code>push</code> and <code>pop</code> pair, which are just as expensive as the memory loads.
+In fact, the function is now one instruction longer.
+If it is slower or not I can't say for sure, for that I would have to either measure it on real hardware or at least disassemble the actual binary after the linker got to play with it.
+Instead I'll leave you with the final verdict about volatile:
+It's coarse and rough and irritating and it gets everywhere.
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2022-08-27 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
