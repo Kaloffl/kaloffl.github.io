@@ -26,7 +26,7 @@
 
       <section>
         <p>
-A recent <a href="https://nitter.net/AllenWebster4th/status/1562894505174790144">discussion on twitter</a> inspired me to look through the uses of <code>volatile</code> in my code.
+A recent <a target="_blank" href="https://nitter.net/AllenWebster4th/status/1562894505174790144">discussion on twitter</a> inspired me to look through the uses of <code>volatile</code> in my code.
 And while a search for this keyword in my desktop code didn't turn up anything meaningful, there were quite a few hits in code for embedded micro-controllers.
 After looking through this code I came to the conclusion that even there the use of this keyword is not ideal.
 In this post I'll pick out one example to show why.
@@ -49,7 +49,7 @@ Keep in mind though that volatile doesn't make those reads atomic, so if you're 
       <section>
         <h3>The example</h3>
         <p>
-The example I've chosen is from a sensor that measures rotational speed and direction via a <a href="https://en.wikipedia.org/wiki/Incremental_encoder#Quadrature_outputs">quadrature encoder</a>.
+The example I've chosen is from a sensor that measures rotational speed and direction via a <a target="_blank" href="https://en.wikipedia.org/wiki/Incremental_encoder#Quadrature_outputs">quadrature encoder</a>.
 The encoder is connected to a 8-bit micro-controller where it triggers an interrupt whenever it detects a certain fixed increment of rotation.
 This means, the faster the rotation, the more interrupts we get per second, until at some point the micro-controller can't keep up and misses interrupts.
 So it is important to figure out the highest reasonable rotational speed and design around that.
@@ -57,7 +57,7 @@ The interrupt increments a counter, the value of which we want to send out rough
 With the highest possible speed the counter would get thousands of increments in that time, so a 16-bit variable would be necessary.
 To keep the sensor-ISR as fast as possible, we implemented a 2-step approach: the sensor-ISR uses a single byte counter, and a timer-ISR periodically comes by, adds the count to a 16-bit variable and clears the counter. 
 To deal with the atomicity problem mentioned above, a ping-pong-buffer is used: one buffer for reading one for writing, switching around every 10ms.
-Here is the relevant code, you can also check it out in the <a href="https://godbolt.org/z/a4b5sG5EM">Compiler Explorer</a>:
+Here is the relevant code, you can also check it out in the <a target="_blank" href="https://godbolt.org/z/a4b5sG5EM">Compiler Explorer</a>:
         </p>
         <figure>
           <pre>

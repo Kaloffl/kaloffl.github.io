@@ -27,7 +27,7 @@
       <section>
         <p>
 Dear diary,<br>
-there is this very cool <a href="https://www.mattkeeter.com/research/mpr/">rendering method</a> by Matthew J. Keeter to render implicitly defined shapes of staggering complexity in logarithmic time.
+there is this very cool <a target="_blank" href="https://www.mattkeeter.com/research/mpr/">rendering method</a> by Matthew J. Keeter to render implicitly defined shapes of staggering complexity in logarithmic time.
 Matt's method has some neat ideas that could fix some shortcomings of my own rendering method for signed distance fields that I have developed and used over the past years (and which I should write about at some point).
 His method is very flexible with regards to the shape: you can completely change it every frame, generate new shapes at runtime, etc, all while running on the GPU.
 To transfer the shape definition from CPU to GPU without constantly recompiling shaders, Matt used his own bytecode plus an interpreter on the GPU side to run it.
@@ -72,8 +72,8 @@ Other neat features of VEX are: 16 addressable registers instead of 8, one outpu
 There's also AVX512, which uses the even newer EVEX encoding, but I'll skip it for now (just as Intel has skipped AVX512 after Tigerlake, which I'm still bitter about).
         </p>
         <p>
-All the gory details are of course written down in <a href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html">Intel's architecture manual</a>.
-AMD also <a href="https://developer.amd.com/resources/developer-guides-manuals/">provides one</a>, if you want to use theirs instead.
+All the gory details are of course written down in <a target="_blank" href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html">Intel's architecture manual</a>.
+AMD also <a target="_blank" href="https://developer.amd.com/resources/developer-guides-manuals/">provides one</a>, if you want to use theirs instead.
 But there's surprisingly little information written about instruction encoding by anyone else, or maybe it's just hard to google. 
         </p>
         <p>
