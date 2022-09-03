@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml"/>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <title>The VEX instruction encoding - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>The VEX instruction encoding</h2>
+        <div>First published: <time>2022-09-03</time></div>
+      </header>
+
+      <section>
+        <p>
+Dear diary,<br>
+there is this very cool <a href="https://www.mattkeeter.com/research/mpr/">rendering method</a> by Matthew J. Keeter to render implicitly defined shapes of staggering complexity in logarithmic time.
+Matt's method has some neat ideas that could fix some shortcomings of my own rendering method for signed distance fields that I have developed and used over the past years (and which I should write about at some point).
+His method is very flexible with regards to the shape: you can completely change it every frame, generate new shapes at runtime, etc, all while running on the GPU.
+To transfer the shape definition from CPU to GPU without constantly recompiling shaders, Matt used his own bytecode plus an interpreter on the GPU side to run it.
+While the GPU is certainly the better platform to render graphics, I would like to stay on the CPU with my own implementation, but so far that has resulted in sub-optimal performance.
+I blame the inefficiency of using an interpreter for this and have therefore decided to write a just-in-time compiler that turns my bytecode into AMD64 machinecode.
+        </p>
+        <p>
+I won't be using any libraries, since my goal is speed and the problem is quite constrained: I need almost exclusively float-math instructions, there are no jumps, etc, so using for example LLVM would be total overkill.
+My Idea is to just allocate some memory, generate the machinecode into it, mark it executable and call into it.
+Sounds simple enough, but how exactly does this machine code even look like?
+So far I've always let the (dis)assembler do the work and just looked at the mnemonics.
+Well turns out they don't call AMD64 a complex instruction set for nothing, buckle up as we'll take a look at a few examples.
+        </p>
+      </section>
+
+      <section>
+        <h3>Modern FPU instructions</h3>
+        <p>
+Before we start a few words about the instructions we're going to look at.
+Though I haven't been programming during most of these developments, so I can't give too many details and might get something wrong.
+        </p>
+        <p>
+Mainstream floating-point arithmetic on the x86 architecture started with the x87 extension which first ran these float operations on a co-processor and later on an integrated FPU.
+While reading up on x87 for this paragraph, I also learned that x87 registers were treated as a stack, at least by a subset of instructions.
+Wild!
+        </p>
+        <p>
+Then SSE came along, providing another, separate FPU with its own instructions and registers.
+When 64-bit CPUs were introduced in 2003, SSE was included in the AMD64 specification, and so a compiler that produced AMD64 machinecode could use SSE instructions for float operations instead of x87 in most cases.
+While the shiny feature of SSE was that it could work on 4 floats (or 2 doubles) at once, it also provided scalar versions of its arithmetic instructions to work with single values as before.
+        </p>
+        <p>
+Then came AVX, available for the first time in CPUs in 2011.
+This time the instruction set extension made use of the existing hardware, sharing registers with SSE, while doubling their size.
+While SSE used "normal" instruction encoding, all AVX instructions make use of so-called the "VEX prefix" encoding, which we'll get to shortly.
+However, the old SSE instructions could also be encoded using VEX, though this altered their behavior slightly.
+Mixing classic SSE and AVX causes the "SSE to AVX transition penalty", which other people have already written a lot about, so I won't get into it here.
+Using the VEX-coded SSE (or 128-bit-AVX if you prefer) instruction removes this penalty, and since AVX is over 11 years old, compilers have adopted it as the default now.
+Other neat features of VEX are: 16 addressable registers instead of 8, one output and 2 operand registers by default (in SSE one operand was also the output, so every add was a +=), and all of that often with the same number of bytes as before.
+        </p>
+        <p>
+There's also AVX512, which uses the even newer EVEX encoding, but I'll skip it for now (just as Intel has skipped AVX512 after Tigerlake, which I'm still bitter about).
+        </p>
+        <p>
+All the gory details are of course written down in <a href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html">Intel's architecture manual</a>.
+AMD also <a href="https://developer.amd.com/resources/developer-guides-manuals/">provides one</a>, if you want to use theirs instead.
+But there's surprisingly little information written about instruction encoding by anyone else, or maybe it's just hard to google. 
+        </p>
+        <p>
+Now let's look at some instructions.
+        </p>
+      </section>
+
+      <section>
+        <h3>vxorps xmm0, xmm0, xmm0</h3>
+        <p>
+Let's start simple, just registers, no memory operand.
+There is no scalar xor, so we're using the "packed singles" version that xors the full 128-bit. 
+Every VEX instruction has to start either with the byte <code>C4</code> or <code>C5</code>.
+The former uses two additional bytes, while the latter uses only one and is vastly preferred by compilers as it seems.
+Here's what those bytes contain:
+        </p>
+        <figure>
+          <pre>
+C4:
+╥───────────────────────────────╥───┬───┬───┬───────────────────╥───┬───────────────┬───┬───────╥
+║ 1   1   0   0   0   1   0   0 ║ R │ X │ B │ m   m   m   m   m ║ W │ v   v   v   v │ L │ p   p ║
+╨───────────────────────────────╨───┴───┴───┴───────────────────╨───┴───────────────┴───┴───────╨
+
+Bit positions:
+  7   6   5   4   3   2   1   0   7   6   5   4   3   2   1   0   7   6   5   4   3   2   1   0
+
+C5:
+╥───────────────────────────────╥───┬───────────────┬───┬───────╥
+║ 1   1   0   0   0   1   0   1 ║ R │ v   v   v   v │ L │ p   p ║
+╨───────────────────────────────╨───┴───────────────┴───┴───────╨
+
+Key:
+    R* - Additional bit for register addressing in ModR/M.Reg (xmm8 - xmm15)
+    X* - Additional bit for register addressing in SIB.index
+    B* - Additional bit for register addressing in ModR/M.R/M
+mmmmm  - Encodes prefix bytes for opcode: 0F, 0F 38 or 0F 3A. Most values reserved for future use.
+         In the C5 encoding 0F is always prefixed to the opcode.
+    W  - Opcode specific.
+ vvvv* - Register address used by 3-operand opcodes.
+    L  - Vector length, 0 = scalar or 128-bit, 1 = 256-bit.
+   pp  - More opcode prefixes: 00: None, 01: 66, 10: F3, 11: F2.
+
+*these are inverted (1's-complement).
+          </pre>
+        </figure>
+        <p>
+The opcode for <code>xorps</code> is <code>0F 57</code> and we're not using any fancy registers that would require extension bits, so the <code>C5</code> encoding should suffice.
+The values in the second byte would all be 0s, but some fields are actually inverted, so instead we end up with <code>F8</code>.
+Together with the now <code>0F</code>-less opcode (because VEX always implies the <code>0F</code>) we have the bytes <code>C5 F8 57</code>.
+        </p>
+        <p>
+Most (all?) instructions come with one more byte which tell the CPU which registers to use.
+It's called the ModR/M byte.
+Many instructions can also directly use a memory address instead of a register, reducing the need to put load and store instructions everywhere.
+If an instruction makes use of a memory address, that is encoded in the ModR/M byte and more information may be provided in the additional SIB byte.
+        </p>
+        <figure>
+          <pre>
+ModR/M:
+╥───────┬───────────┬───────────╥
+║  Mod  │    Reg    │    R/M    ║
+╨───────┴───────────┴───────────╨
+
+Bit positions:
+  7   6   5   4   3   2   1   0
+
+Key:
+  Mod - Stores how to interpret the R/M field:
+        00: use memory pointed to by general-purpose register addressed by R/M
+        01: as 00 but there is an additional signed offset byte after this instruction that is added to the address
+        10: as 10 but there are 4 bytes
+        11: directly use xmm register addressed in R/M 
+  Reg - These 3 Bits plus the VEX.R bit as MSB address one register the instruction uses.
+        In some cases these bits are used to extend the opcode instead.
+  R/M - Either a register the instruction uses directly or a register containing a memory address, depending on the Mod bits.
+        Can be extended with a 4th bit from VEX.B if C4 encoding is used.
+        If Mod is 00, 01 or 10, these bits address RAX, RCX, ...
+        If Mod is 11, these bits address xmm0, xmm1, ...
+        If Mod is 00, 01 or 10 and R/M is 100 (which would be RSP but isn't) the ModR/M byte is followed by the SIB byte with more information.
+        If Mod is 00 and R/M is 101, RBP is not used, and instead this instruction is followed by a 4-byte address that is used.
+          </pre>
+        </figure>
+      </section>
+      <p>
+Okay, the ModR/M byte can get a bit complicated, but since we're only using registers we can set <code>Mod</code> to <code>11</code> and everything else to 0 since we're just using <code>xmm0</code>.
+No additional bytes are necessary, so we're done!
+And now for the real reason I've decided to write this article: Unicode-Art!
+      </p>
+      <figure>
+        <pre>
+C5 F8 57 C0
+├┘ ├┘ ├┘ ├┘
+│  │  │  └ModR/M = 11 000 000
+│  │  │            ├┘ ├─┘ ├─┘
+│  │  │            │  │   └r/m = 0 -> xmm0
+│  │  │            │  │  
+│  │  │            │  └reg = 0 -> xmm0
+│  │  │            │
+│  │  │            └Mod = 3 -> register operand in r/m
+│  │  │
+│  │  └Opcode = 0F 57 -> xorps r r r/m
+│  │            └┤
+│  └1 1111 0 00  └┄┄┄┄┄┄┐
+│   │ ├──┘ │ ├┘         │
+│   │ │    │ │          │
+│   │ │    │ └No prefix │
+│   │ │    │            │
+│   │ │    └128-bit     │
+│   │ │                 │
+│   │ └vvvv = 0 -> xmm0 │
+│   │                   │
+│   └R = 0              │
+│                      ┌┤
+└Two Byte VEX, leading 0F in opcode implied
+        </pre>
+      </figure>
+
+      <section>
+        <h3>vmovss xmm0, [RAX]</h3>
+        <p>
+This time we're venturing out in the world of memory operands.
+The opcode of <code>movss</code> is <code>F3 0F 10</code> so there is an additional <code>F3</code> compared to our previous instruction.
+This <code>F3</code> is what tells the CPU that we're operating on a scalar instead of packed singles.
+Without it the instruction would be <code>vmovups</code>.
+The additional u in this case means unaligned, as opposed to <code>movaps</code> for aligned moves, which have a different opcode.
+Other prefixes are <code>66</code> for (unaligned) packed doubles and <code>F2</code> for single doubles.
+Packed singles are what you get without a prefix.
+We don't have to add these prefix bytes though, because they are encoded in the <code>pp</code> field in the VEX prefix, which again can be the <code>C5</code> version.
+        </p>
+        <p>
+The last thing to worry about is the ModR/M byte, now that we're loading something from memory.
+But without fancy offsets we just have to set the <code>Mod</code> field to <code>00</code> and set the <code>R/M</code> field to the register that holds the memory address.
+Note also that the <code>VEC.vvvv</code> field is unused this time, since our instruction has only two operands.
+        </p>
+        <figure>
+          <pre>
+C5 FA 10 00
+├┘ ├┘ ├┘ ├┘
+│  │  │  └ModR/M = 00 000 000
+│  │  │            ├┘ ├─┘ ├─┘
+│  │  │            │  │   └r/m = [RAX]
+│  │  │            │  │  
+│  │  │            │  └reg = xmm0
+│  │  │            │
+│  │  │            └Mod = 0 -> memory operand in r/m
+│  │  │
+│  │  └Opcode = F3 0F 10 -> movss r r/m
+│  │            └┤ └┤
+│  └1 1111 0 10  │  └┄┄┄┄┐
+│   │ ├──┘ │ ├┘  └┄┄┄┄┐  │
+│   │ │    │ │        ├┐ │
+│   │ │    │ └Prefix: F3 │
+│   │ │    │             │
+│   │ │    └128-bit     ┌┘
+│   │ │                 │
+│   │ └unused           │
+│   │                   │
+│   └R = 0              │
+│                      ┌┤
+└Two Byte VEX, leading 0F in opcode implied
+          </pre>
+        </figure>
+      </section>
+
+      <section>
+        <h3>mulss xmm0, xmm0, [RAX+2C]</h3>
+        <p>
+Time to get fancy with offsets, but not too fancy.
+A single byte offset between -128 and 127 can be encoded with just one more byte.
+Note that the offset, or displacement as the manual calls it, is signed, so if a displacement of 128 is desired, the full 4-byte displacement is required.
+        </p>
+        <figure>
+          <pre>
+C5 FA 59 40 2C
+├┘ ├┘ ├┘ ├┘ ├┘
+│  │  │  │  └Displacement = 2C
+│  │  │  │
+│  │  │  └ModR/M = 01 000 000
+│  │  │            ├┘ ├─┘ ├─┘
+│  │  │            │  │   └r/m = [RAX]
+│  │  │            │  │  
+│  │  │            │  └reg = xmm0
+│  │  │            │
+│  │  │            └Mod = 1 -> memory operand in r/m with 8-bit displacement
+│  │  │
+│  │  └Opcode = F3 0F 59 -> mulss
+│  │            └┤ └┤
+│  └1 1111 0 10  │  └┄┄┄┄┐
+│   │ ├──┘ │ ├┘  └┄┄┄┄┐  │
+│   │ │    │ │        ├┐ │
+│   │ │    │ └Prefix: F3 │
+│   │ │    │             │
+│   │ │    └128-bit     ┌┘
+│   │ │                 │
+│   │ └vvvv = 0 -> xmm0 │
+│   │                   │
+│   └R = 0              │
+│                      ┌┤
+└Two Byte VEX, leading 0F in opcode implied
+          </pre>
+        </figure>
+      </section>
+
+      <section>
+        <h3>mulss xmm0, xmm0, [RSP+2C]</h3>
+        <p>
+Note that the stack pointer <code>RSP</code> can't be encoded directly in the <code>R/M</code> field.
+For that we have to introduce the <code>SIB</code> byte.
+This byte directly follows the ModR/M byte, any displacements will be after the <code>SIB</code> byte.
+This encoding is quite common in function prologs and epilogs where <code>RSP+displacement</code> is used heavily instead of push and pop.
+        </p>
+        <figure>
+          <pre>
+SIB:
+╥───────┬───────────┬───────────╥
+║ Scale │   Index   │   Base    ║
+╨───────┴───────────┴───────────╨
+
+Bit positions:
+  7   6   5   4   3   2   1   0
+
+Key:
+  Scale - Multiplier for the value in the index register, 1, 2, 4 or 8.
+  Index - Address of a general purpose register, except 100, which means no index (and therefore no scale).
+   Base - Address of a general purpose register used as unscaled base.
+          If value is 101 and Mod in ModR/M is 00, a 4-byte displacement is used instead if RBP.
+          </pre>
+        </figure>
+        <p>
+For our instruction we need no <code>Scale</code>, just <code>RSP</code> and one byte of displacement.
+So we set <code>R/M</code> to <code>100</code> which isn't <code>RSP</code>, but instead signals that a <code>SIB</code> byte will follow.
+In that the <code>Scale</code> doesn't matter, so we leave it at 00, we don't need an <code>Index</code>, so <code>100</code> it is (again not <code>RSP</code> but <code>none</code>).
+Finally the <code>Base</code> will be <code>100</code> as well, which finally <em>does</em> mean <code>RSP</code>.
+The <code>Mod</code> bits will be <code>01</code> like last time to add a 1-byte displacement to the end.
+        </p>
+        <figure>
+          <pre>
+C5 FA 59 44 24 2C
+├┘ ├┘ ├┘ ├┘ ├┘ ├┘
+│  │  │  │  │  └displacement = 2C
+│  │  │  │  │
+│  │  │  │  └SIB = 00 100 100
+│  │  │  │         ├┘ ├─┘ ├─┘
+│  │  │  │         │  │   └base = 4 -> RSP
+│  │  │  │         │  │
+│  │  │  │         │  └index = 4 -> none
+│  │  │  │         │
+│  │  │  │         └scale = 0 -> *1
+│  │  │  │
+│  │  │  └ModR/M = 01 000 100
+│  │  │            ├┘ ├─┘ ├─┘
+│  │  │            │  │   └r/m = 4 -> SIB
+│  │  │            │  │  
+│  │  │            │  └reg = xmm0
+│  │  │            │
+│  │  │            └Mod = 1 -> memory operand w/ 8-bit displacement
+│  │  │
+│  │  └Opcode = F3 0F 59 -> mulss r r r/m
+│  │            └┤ └┤
+│  └1 1111 0 10  │  └┄┄┄┄┐
+│   │ ├──┘ │ ├┘  └┄┄┄┄┐  │  
+│   │ │    │ │        ├┐ │
+│   │ │    │ └Prefix: F3 │
+│   │ │    │             │
+│   │ │    └128-bit     ┌┘
+│   │ │                 │
+│   │ └vvvv = 0 -> xmm0 │
+│   │                   │
+│   └R = 0              │
+│                      ┌┤
+└Two Byte VEX, leading 0F in opcode implied
+          </pre>
+        </figure>
+        <p>
+There are so many exceptions and special cases that I haven't mentioned yet, but I think these examples should give anyone curious a good start.
+Your best friend will be the architecture manuals, as well as a disassembler that can tell you what the bytes mean that you just wrote.
+        </p>
+      </section>
+ 
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2022-09-03 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>

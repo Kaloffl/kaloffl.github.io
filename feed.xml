@@ -13,6 +13,14 @@
   </author>
 
   <entry>
+    <title>The VEX instruction encoding</title>
+    <link href="https://kaloffl.github.io/0010.html"/>
+    <id>urn:uuid:91e7faf6-6cc0-4eca-91ca-67281d7d358c</id>
+    <updated>2022-09-03T00:00:00Z</updated>
+    <summary>The VEX instruction encoding</summary>
+  </entry>
+
+  <entry>
     <title>But not that volatile</title>
     <link href="https://kaloffl.github.io/0010.html"/>
     <id>urn:uuid:18cf33c5-fe1e-4b56-97f9-33b8162c63ed</id>
