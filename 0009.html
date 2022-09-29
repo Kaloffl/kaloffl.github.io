@@ -145,7 +145,7 @@ Let's see if this helps us with the multiplication above.
 - az<b>e<sub>3</sub></b><b>e<sub>1</sub></b> + bz<b>e<sub>2</sub></b><b>e<sub>3</sub></b> + cz
 
 // sort and combine terms
-= (ax + by + cz) + (ay - bx)<b>e<sub>1</sub></b><b>e<sub>2</sub></b> + (cx - az)<b>e<sub>3</sub></b><b>e<sub>1</sub></b> + (bz - cy)<b>e<sub>2</sub></b><b>e<sub>3</sub></b>
+= (bz - cy)<b>e<sub>2</sub></b><b>e<sub>3</sub></b> + (cx - az)<b>e<sub>3</sub></b><b>e<sub>1</sub></b> + (ax + by + cz) + (ay - bx)<b>e<sub>1</sub></b><b>e<sub>2</sub></b>
           </pre>
         </figure>
         <p>
@@ -175,6 +175,24 @@ In order for the vector components to square to 1, they first have to be swapped
 And this swapping requires us to negate the product, thus producing the correct -1 as a result.
         </p>
         <p>
+Also note that there are two different standards for Quaternions:
+the Hamiltonian approach where <code>ijk = -1</code>,
+and the JPL standard where <code>ijk = -1</code>.
+Let's just see what we ended up with, assuming <code>i = <b>e<sub>23</sub></b></code> and so on.
+        </p>
+        <figure>
+          <pre>
+  <b>e<sub>23</sub></b><b>e<sub>31</sub></b><b>e<sub>12</sub></b>
+= <b>e<sub>233112</sub></b> // merge <b>e</b>s
+= <b>e<sub>233112</sub></b> // eliminate <b>e<sub>33</sub></b> and <b>e<sub>11</sub></b>
+= <b>e<sub>22</sub></b> // eliminate <b>e<sub>22</sub></b>
+= 1
+          </pre>
+        </figure>
+        <p>
+Okay, JPL it is, keep that in mind when comparing to other sources.
+        </p>
+        <p>
 Quaternions encode rotations, so what rotation does this one have?
 If we take another look at the bivector part, it looks an awful lot like the vector cross-product.
 And that one is known to take two vectors<sup>2</sup> and create a third vector that is perpendicular to the first two.
@@ -200,26 +218,26 @@ I'll shorten <code><b>e<sub>i</sub></b><b>e<sub>j</sub></b></code> to just <code
         <figure>
           <pre>
 // Definitions
-<b>q</b> = a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>
+<b>q</b> = a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>
 <b>v</b> = x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>
 
 <b>q</b> * <b>v</b>
 
 // Expand
-= (a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>) * (x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>)
+= (a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>) * (x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>)
 
 // Distribute
-= ax<b>e<sub>1</sub></b> + bx<b>e<sub>121</sub></b> + cx<b>e<sub>311</sub></b> + dx<b>e<sub>231</sub></b>
-+ ay<b>e<sub>2</sub></b> + by<b>e<sub>122</sub></b> + cy<b>e<sub>312</sub></b> + dy<b>e<sub>232</sub></b>
-+ az<b>e<sub>3</sub></b> + bz<b>e<sub>123</sub></b> + cz<b>e<sub>313</sub></b> + dz<b>e<sub>233</sub></b>
+= ax<b>e<sub>1</sub></b> + bx<b>e<sub>231</sub></b> + cx<b>e<sub>311</sub></b> + dx<b>e<sub>121</sub></b>
++ ay<b>e<sub>2</sub></b> + by<b>e<sub>232</sub></b> + cy<b>e<sub>312</sub></b> + dy<b>e<sub>122</sub></b>
++ az<b>e<sub>3</sub></b> + bz<b>e<sub>233</sub></b> + cz<b>e<sub>313</sub></b> + dz<b>e<sub>123</sub></b>
 
 // Simplify
-= ax<b>e<sub>1</sub></b> - bx<b>e<sub>2</sub></b> + cx<b>e<sub>3</sub></b> + dx<b>e<sub>123</sub></b>
-+ ay<b>e<sub>2</sub></b> + by<b>e<sub>1</sub></b> + cy<b>e<sub>123</sub></b> - dy<b>e<sub>3</sub></b>
-+ az<b>e<sub>3</sub></b> + bz<b>e<sub>123</sub></b> - cz<b>e<sub>1</sub></b> + dz<b>e<sub>2</sub></b>
+= ax<b>e<sub>1</sub></b> + bx<b>e<sub>123</sub></b> + cx<b>e<sub>3</sub></b> - dx<b>e<sub>2</sub></b>
++ ay<b>e<sub>2</sub></b> - by<b>e<sub>3</sub></b> + cy<b>e<sub>123</sub></b> + dy<b>e<sub>1</sub></b>
++ az<b>e<sub>3</sub></b> + bz<b>e<sub>2</sub></b> - cz<b>e<sub>1</sub></b> + dz<b>e<sub>123</sub></b>
 
 // Sort and merge terms
-= (ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>
+= (ax - cz + dy)<b>e<sub>1</sub></b> + (ay + bz - dx)<b>e<sub>2</sub></b> + (az - by + cx)<b>e<sub>3</sub></b> + (bx + cy + dz)<b>e<sub>123</sub></b>
           </pre>
         </figure>
         <p>
@@ -231,35 +249,36 @@ The trivector part above only contains coefficients from the bivector part of th
         <figure>
           <pre>
 // Conjugate:
+ <b>q</b> = a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>
 ~<b>q</b> = a - b<b>e<sub>12</sub></b> - c<b>e<sub>31</sub></b> - d<b>e<sub>23</sub></b>
 
 <b>q</b> * <b>v</b> * ~<b>q</b>
 
-= ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>) * (a - b<b>e<sub>12</sub></b> - c<b>e<sub>31</sub></b> - d<b>e<sub>23</sub></b>)
+= ((ax - cz + dy)<b>e<sub>1</sub></b> + (ay + bz - dx)<b>e<sub>2</sub></b> + (az - by + cx)<b>e<sub>3</sub></b> + (bx + cy + dz)<b>e<sub>123</sub></b>) * (a - b<b>e<sub>23</sub></b> - c<b>e<sub>31</sub></b> - d<b>e<sub>12</sub></b>)
 
-= ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>)a
-- ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>)b<b>e<sub>12</sub></b>
-- ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>)c<b>e<sub>31</sub></b>
-- ((ax + by - cz)<b>e<sub>1</sub></b> + (ay - bx + dz)<b>e<sub>2</sub></b> + (az + cx - dy)<b>e<sub>3</sub></b> + (dx + cy + bz)<b>e<sub>123</sub></b>)d<b>e<sub>23</sub></b>
+= ((ax - cz + dy)<b>e<sub>1</sub></b> + (ay + bz - dx)<b>e<sub>2</sub></b> + (az - by + cx)<b>e<sub>3</sub></b> + (bx + cy + dz)<b>e<sub>123</sub></b>)a
+- ((ax - cz + dy)<b>e<sub>1</sub></b> + (ay + bz - dx)<b>e<sub>2</sub></b> + (az - by + cx)<b>e<sub>3</sub></b> + (bx + cy + dz)<b>e<sub>123</sub></b>)b<b>e<sub>23</sub></b>
+- ((ax - cz + dy)<b>e<sub>1</sub></b> + (ay + bz - dx)<b>e<sub>2</sub></b> + (az - by + cx)<b>e<sub>3</sub></b> + (bx + cy + dz)<b>e<sub>123</sub></b>)c<b>e<sub>31</sub></b>
+- ((ax - cz + dy)<b>e<sub>1</sub></b> + (ay + bz - dx)<b>e<sub>2</sub></b> + (az - by + cx)<b>e<sub>3</sub></b> + (bx + cy + dz)<b>e<sub>123</sub></b>)d<b>e<sub>12</sub></b>
 
-= (ax + by - cz)a<b>e<sub>1</sub></b>   + (ay - bx + dz)a<b>e<sub>2</sub></b>   + (az + cx - dy)a<b>e<sub>3</sub></b>   + (dx + cy + bz)a<b>e<sub>123</sub></b>
-- (ax + by - cz)b<b>e<sub>112</sub></b> - (ay - bx + dz)b<b>e<sub>212</sub></b> - (az + cx - dy)b<b>e<sub>312</sub></b> - (dx + cy + bz)b<b>e<sub>12312</sub></b>
-- (ax + by - cz)c<b>e<sub>131</sub></b> - (ay - bx + dz)c<b>e<sub>231</sub></b> - (az + cx - dy)c<b>e<sub>331</sub></b> - (dx + cy + bz)c<b>e<sub>12331</sub></b>
-- (ax + by - cz)d<b>e<sub>123</sub></b> - (ay - bx + dz)d<b>e<sub>223</sub></b> - (az + cx - dy)d<b>e<sub>323</sub></b> - (dx + cy + bz)d<b>e<sub>12323</sub></b>
+= (ax - cz + dy)a<b>e<sub>1</sub></b>   + (ay + bz - dx)a<b>e<sub>2</sub></b>   + (az - by + cx)a<b>e<sub>3</sub></b>   + (bx + cy + dz)a<b>e<sub>123</sub></b>
+- (ax - cz + dy)b<b>e<sub>123</sub></b> - (ay + bz - dx)b<b>e<sub>223</sub></b> - (az - by + cx)b<b>e<sub>323</sub></b> - (bx + cy + dz)b<b>e<sub>12323</sub></b>
+- (ax - cz + dy)c<b>e<sub>131</sub></b> - (ay + bz - dx)c<b>e<sub>231</sub></b> - (az - by + cx)c<b>e<sub>331</sub></b> - (bx + cy + dz)c<b>e<sub>12331</sub></b>
+- (ax - cz + dy)d<b>e<sub>112</sub></b> - (ay + bz - dx)d<b>e<sub>212</sub></b> - (az - by + cx)d<b>e<sub>312</sub></b> - (bx + cy + dz)d<b>e<sub>12312</sub></b>
 
-= (a<sup>2</sup>x + bay - caz)<b>e<sub>1</sub></b>   + (a<sup>2</sup>y - bax + daz)<b>e<sub>2</sub></b>   + (a<sup>2</sup>z + cax - day)<b>e<sub>3</sub></b>   + (dax + cay + baz)<b>e<sub>123</sub></b>
-- (abx + b<sup>2</sup>y - cbz)<b>e<sub>2</sub></b>   + (aby - b<sup>2</sup>x + dbz)<b>e<sub>1</sub></b>   - (abz + cbx - dby)<b>e<sub>123</sub></b> + (dbx + cby + b<sup>2</sup>z)<b>e<sub>3</sub></b>
-+ (acx + bcy - c<sup>2</sup>z)<b>e<sub>3</sub></b>   - (acy - bcx + dcz)<b>e<sub>123</sub></b> - (acz + c<sup>2</sup>x - dcy)<b>e<sub>1</sub></b>   + (dcx + c<sup>2</sup>y + bcz)<b>e<sub>2</sub></b>
-- (adx + bdy - cdz)<b>e<sub>123</sub></b> - (ady - bdx + d<sup>2</sup>z)<b>e<sub>3</sub></b>   + (adz + cdx - d<sup>2</sup>y)<b>e<sub>2</sub></b>   + (d<sup>2</sup>x + cdy + bdz)<b>e<sub>1</sub></b>
+= (a<sup>2</sup>x - acz + ady)<b>e<sub>1</sub></b>   + (a<sup>2</sup>y + abz - adx)<b>e<sub>2</sub></b>   + (a<sup>2</sup>z - aby + acx)<b>e<sub>3</sub></b>   + (abx + acy + adz)<b>e<sub>123</sub></b>
+- (abx - bcz + bdy)<b>e<sub>123</sub></b> - (aby + b<sup>2</sup>z - bdx)<b>e<sub>3</sub></b>   + (abz - b<sup>2</sup>y + bcx)<b>e<sub>2</sub></b>   + (b<sup>2</sup>x + bcy + bdz)<b>e<sub>1</sub></b>
++ (acx - c<sup>2</sup>z + cdy)<b>e<sub>3</sub></b>   - (acy + bcz - cdx)<b>e<sub>123</sub></b> - (acz - bcy + c<sup>2</sup>x)<b>e<sub>1</sub></b>   + (bcx + c<sup>2</sup>y + cdz)<b>e<sub>2</sub></b>
+- (adx - cdz + d<sup>2</sup>y)<b>e<sub>2</sub></b>   + (ady + bdz - d<sup>2</sup>x)<b>e<sub>1</sub></b>   - (adz - bdy + cdx)<b>e<sub>123</sub></b> + (bdx + cdy + d<sup>2</sup>z)<b>e<sub>3</sub></b>
 
-= (a<sup>2</sup>x + aby - acz + aby - b<sup>2</sup>x + bdz - acz - c<sup>2</sup>x + cdy + d<sup>2</sup>x + cdy + bdz)<b>e<sub>1</sub></b>
-+ (a<sup>2</sup>y - abx + adz - abx - b<sup>2</sup>y + bcz + cdx + c<sup>2</sup>y + bcz + adz + cdx - d<sup>2</sup>y)<b>e<sub>2</sub></b>
-+ (a<sup>2</sup>z + acx - ady + bdx + bcy + b<sup>2</sup>z + acx + bcy - c<sup>2</sup>z - ady + bdx - d<sup>2</sup>z)<b>e<sub>3</sub></b>
-+ (adx + acy + abz - abz - bcx + bdy - acy + bcx - cdz - adx - bdy + cdz)<b>e<sub>123</sub></b>
+= (a<sup>2</sup>x - acz + ady + b<sup>2</sup>x + bcy + bdz - acz + bcy - c<sup>2</sup>x + ady + bdz - d<sup>2</sup>x)<b>e<sub>1</sub></b>
++ (a<sup>2</sup>y + abz - adx + abz - b<sup>2</sup>y + bcx + bcx + c<sup>2</sup>y + cdz - adx + cdz - d<sup>2</sup>y)<b>e<sub>2</sub></b>
++ (a<sup>2</sup>z - aby + acx - aby - b<sup>2</sup>z + bdx + acx - c<sup>2</sup>z + cdy + bdx + cdy + d<sup>2</sup>z)<b>e<sub>3</sub></b>
++ (abx + acy + adz - abx + bcz - bdy - acy - bcz + cdx - adz + bdy - cdx)<b>e<sub>123</sub></b>
 
-= ((a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> + d<sup>2</sup>)x + (ab + cd)2y + (bd - ac)2z)<b>e<sub>1</sub></b>
-+ ((cd - ab)2x + (a<sup>2</sup> - b<sup>2</sup> + c<sup>2</sup> - d<sup>2</sup>)y + (ad + bc)2z)<b>e<sub>2</sub></b>
-+ ((ac + bd)2x + (bc - ad)2y + (a<sup>2</sup> + b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>)z)<b>e<sub>3</sub></b>
+= ((a<sup>2</sup> + b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>)x + (ad + bc)2y + (bd - ac)2z)<b>e<sub>1</sub></b>
++ ((bc - ad)2x + (a<sup>2</sup> - b<sup>2</sup> + c<sup>2</sup> - d<sup>2</sup>)y + (ab + cd)2z)<b>e<sub>2</sub></b>
++ ((ac + bd)2x + (cd - ab)2y + (a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> + d<sup>2</sup>)z)<b>e<sub>3</sub></b>
           </pre>
         </figure>
         <p>
@@ -272,11 +291,10 @@ And if you ever find yourself on a deserted island with no internet you will be 
         <p>
 Though that conjugate is a bit weird.
 And doesn't Quaternion rotation require normalized Quaternions?
-Well, we won't have to worry about both of these things if we just change the formula for Quaternion rotation a bit: <code><b>q</b>*<b>v</b>/<b>q</b></code>.
+Well, we won't have to worry about both of these things if we just change the formula for Quaternion rotation a bit: <code><b>q</b><sup>-1</sup><b>v</b><b>q</b></code>.
         </p>
         <p>
-Wait what?
-Quaternion division?
+Wait what's <code><b>q</b><sup>-1</sup></code>?
 Okay, this article is already getting quite long, so I'll not go into all the details and just say <code><b>q</b><sup>-1</sup> = ~<b>q</b>/(|<b>q</b>|<sup>2</sup>)</code>.
 You can check yourself that any Quaternion divided by itself will be 1 (except division by 0 of course).
 The <code>|<b>q</b>|<sup>2</sup></code> thing is called the quadrature and will help us out again later.
@@ -294,8 +312,8 @@ Now to finally get back to the quirk we found above: the Quaternion we get by mu
 How do we make it just once the angle?
 Dividing by 2 doesn't work because it scales the whole Quaternion but leaves the rotation unaffected.
 So let's look at the opposite problem first: how would we double a rotation?
-We rotate twice of course, like so: <code><b>q</b>*<b>q</b>*<b>v</b>/<b>q</b>/<b>q</b></code>.
-That looks an awful lot like squaring, so to halve a rotation we have to take the square root.
+We rotate twice of course, like so: <code><b>q</b><sup>-1</sup>*<b>q</b><sup>-1</sup>*<b>v</b>*<b>q</b>*<b>q</b></code>.
+That looks an awful lot like squaring, so to halve a rotation we should take the square root!
         </p>
         <p>
 How do we take the square root of a four-dimensional entity like a Quaternion?
@@ -303,23 +321,23 @@ Let's first look at how the square of a Quaternion looks like:
         </p>
         <figure>
           <pre>
-(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>)<sup>2</sup>
+(a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>)<sup>2</sup>
 
-= (a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>)(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>)
+= (a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>)(a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>)
 
-= a(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>) + b<b>e<sub>12</sub></b>(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>) + c<b>e<sub>31</sub></b>(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>) + d<b>e<sub>23</sub></b>(a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>)
+= a(a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>) + b<b>e<sub>23</sub></b>(a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>) + c<b>e<sub>31</sub></b>(a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>) + d<b>e<sub>12</sub></b>(a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>)
 
-= a<sup>2</sup> + ab<b>e<sub>12</sub></b> + ac<b>e<sub>31</sub></b> + ad<b>e<sub>23</sub></b>
-+ ab<b>e<sub>12</sub></b> + b<sup>2</sup><b>e<sub>1212</sub></b> + bc<b>e<sub>1231</sub></b> + bd<b>e<sub>1223</sub></b>
-+ ac<b>e<sub>31</sub></b> + bc<b>e<sub>3112</sub></b> + c<sup>2</sup><b>e<sub>3131</sub></b> + cd<b>e<sub>3123</sub></b>
-+ ad<b>e<sub>23</sub></b> + bd<b>e<sub>2312</sub></b> + cd<b>e<sub>2331</sub></b> + d<sup>2</sup><b>e<sub>2323</sub></b>
+= a<sup>2</sup> + ab<b>e<sub>23</sub></b> + ac<b>e<sub>31</sub></b> + ad<b>e<sub>12</sub></b>
++ ab<b>e<sub>23</sub></b> + b<sup>2</sup><b>e<sub>2323</sub></b> + bc<b>e<sub>2331</sub></b> + bd<b>e<sub>2312</sub></b>
++ ac<b>e<sub>31</sub></b> + bc<b>e<sub>2331</sub></b> + c<sup>2</sup><b>e<sub>3131</sub></b> + cd<b>e<sub>3112</sub></b>
++ ad<b>e<sub>12</sub></b> + bd<b>e<sub>2312</sub></b> + cd<b>e<sub>1231</sub></b> + d<sup>2</sup><b>e<sub>1212</sub></b>
 
-= a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>
-+ (ab + ab + cd - cd)<b>e<sub>12</sub></b>
-+ (ac + ac + bd - bd)<b>e<sub>31</sub></b>
-+ (ad + bc + ad - bc)<b>e<sub>23</sub></b>
+= (a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>)
++ (ab + ab + bc - bc)<b>e<sub>23</sub></b>
++ (ac + bd + ac - bd)<b>e<sub>31</sub></b>
++ (ad + cd + ad - cd)<b>e<sub>12</sub></b>
 
-= (a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>) + 2ab<b>e<sub>12</sub></b> + 2ac<b>e<sub>31</sub></b> + 2ad<b>e<sub>23</sub></b>
+= (a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>) + 2ab<b>e<sub>23</sub></b> + 2ac<b>e<sub>31</sub></b> + 2ad<b>e<sub>12</sub></b>
           </pre>
         </figure>
         <p>
@@ -329,8 +347,8 @@ And if we take the four components of the Quaternion square above we have 4 equa
         </p>
         <figure>
           <pre>
-<b>q</b> = a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>
-<b>q</b><sup>2</sup> = <b>r</b> = x + y<b>e<sub>12</sub></b> + z<b>e<sub>31</sub></b> + w<b>e<sub>23</sub></b>
+<b>q</b> = a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>
+<b>q</b><sup>2</sup> = <b>r</b> = x + y<b>e<sub>23</sub></b> + z<b>e<sub>31</sub></b> + w<b>e<sub>12</sub></b>
 
 x = a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>
 y = 2ab
@@ -338,11 +356,11 @@ z = 2ac
 w = 2ad
 
 |<b>r</b>|<sup>2</sup> = |<b>q</b>|<sup>4</sup>
-<i>sqrt</i>(|<b>r</b>|<sup>2</sup>) = |<b>q</b>|<sup>2</sup> = a<sup>2</sup> + b<sup>2</sup> + c<sup>2</sup> + d<sup>2</sup>
+<i>√</i>(|<b>r</b>|<sup>2</sup>) = |<b>q</b>|<sup>2</sup> = a<sup>2</sup> + b<sup>2</sup> + c<sup>2</sup> + d<sup>2</sup>
 
-x + <i>sqrt</i>(|<b>r</b>|<sup>2</sup>) = a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup> + a<sup>2</sup> + b<sup>2</sup> + c<sup>2</sup> + d<sup>2</sup> = 2a<sup>2</sup>
+x + <i>√</i>(|<b>r</b>|<sup>2</sup>) = a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup> + a<sup>2</sup> + b<sup>2</sup> + c<sup>2</sup> + d<sup>2</sup> = 2a<sup>2</sup>
 
-a = <i>sqrt</i>((x + <i>sqrt</i>(|r|<sup>2</sup>)) / 2)
+a = <i>√</i>((x + <i>√</i>(|r|<sup>2</sup>)) / 2)
 b = y / (2a)
 c = z / (2a)
 d = w / (2a)
@@ -351,7 +369,7 @@ d = w / (2a)
         <p>
 See, I told you the quadrature would come in handy again!
 Though I've sneaked (snook?) that <code>|<b>r</b>|<sup>2</sup> = |<b>q</b>|<sup>4</sup></code> in there that you'll have to check for yourself.
-But now we can finally rotate exactly by the angle between two vectors: <code><b>q</b> = <i>sqrt</i>(<b>v<sub>1</sub></b> * <b>v<sub>2</sub></b>)</code>.
+But now we can finally rotate exactly by the angle between two vectors: <code><b>q</b> = <i>√</i>(<b>v<sub>1</sub></b> * <b>v<sub>2</sub></b>)</code>.
 Which of the vectors is left and which is right is important, swapping them will invert the rotation.
         </p>
         <p>
@@ -378,6 +396,7 @@ Who'd've thunk!
       <section>
         <h2>Change-log</h2>
         <ul>
+          <li>2022-09-29 - changed order of base bivectors and added a section about Hamilton vs JPL.</li>
           <li>2022-08-20 - Initial post.</li>
         </ul>
       </section>
