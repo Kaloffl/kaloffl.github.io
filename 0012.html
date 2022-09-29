@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml"/>
+    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <title>Quaternion ≠ Quaternion - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>Quaternion ≠ Quaternion</h2>
+        <div>First published: <time>2022-09-29</time></div>
+      </header>
+
+      <section>
+        <p>
+If you've ever worked with Quaternions and looked around the internet (or a physical library) for formulas to use with them, you might have noticed that some seem to work the opposite way than you had expected.
+After checking the handedness of your coordinate systems and re-checking the formulas, you might have found other sources that claim to describe the same operation, but with a slightly different formula.
+How can that be when everybody is claiming that Quaternions have no handedness (or chirality, which sounds much cooler but means the same).
+        </p>
+        <p>
+Well, Quaternions have their own trouble with competing standards, and today we'll see why both standards are almost the same except for the order of two numbers.
+In short: the two standards are usually called Hamiltonian and JPL.
+The former one because it's the one that the father of Quaternions, William Rowan Hamilton, used when he published them.
+The latter, because NASAs Jet Propulsion Lab preferred and advocated for them.
+        </p>
+      </section>
+ 
+      <section>
+        <h3>The same but different</h3>
+        <p>
+Unfortunately, many publications that use Quaternions don't say which of the two they used, but there can be some hints.
+For example the Hamiltonian rotation of a vector is <code>q*v/q</code>, while the JPL version is <code>q<sup>-1</sup>*v*q</code>, almost the same except for the order.
+        </p>
+        <p>
+Another difference is in the definition of the Quaternion: for Hamiltonians it is just <code>i<sup>2</sup> = j<sup>2</sup> = k<sup>2</sup> = ijk = -1</code>, which seems pretty neat.
+For the JPL version on the other hand we have <code>i<sup>2</sup> = j<sup>2</sup> = k<sup>2</sup> = -1</code> and <code>ijk = 1</code> which requires two different numbers, how ugly!
+We can take this apart a bit further and look at the multiplication tables for both:
+        </p>
+        <figure>
+          <pre>
+ Hamiltonian          JPL
+
+ 1 │ i  j  k      1 │ i  j  k
+───┼─────────    ───┼─────────
+ i │-1  k -j      i │-1 -k  j
+ j │-k -1  i      j │ k -1 -i
+ k │ j -i -1      k │-j  i -1
+          </pre>
+        </figure>
+        <p>
+In the tables you can read off the result of multiplying the value on the left with the value on the top for each cell.
+It might be notable that one is the transpose of the other.
+        </p>
+      </section>
+
+      <section>
+        <h3>I can't not talk about Geometric Algebra</h3>
+        <p>
+In my <a target="_blank" href="0009.html">earlier post</a> about Quaternions, I used geometric algebra to create them as the result of multiplying two vectors together.
+At some point I also mention these two standards and that I used the <code>ijk = 1</code> variant.
+This was quite surprising to me when I first noticed, because I never consciously chose this version, it just arose from something I did.
+And after some digging I found what this thing was and that I can blame <a target="_blank" href="https://bivector.net/tools.html">bivector.net</a> for it.
+Or should I blame myself for copying their notation? Nah!
+        </p>
+        <p>
+When you take a look at the linked site, you should see a large multiplication table, with the base bivectors <code>e<sub>12</sub> e<sub>31</sub> e<sub>23</sub></code>.
+While I prefer to order them <code>e<sub>23</sub> e<sub>31</sub> e<sub>12</sub></code> because then they are in the same order as the axis they are each perpendicular to: <code>e<sub>1</sub> e<sub>2</sub> e<sub>3</sub></code>.
+Although that isn't really important because the only order affects the result is that of a multiplication, which this isn't.
+But you have to be careful which order of basis bivectors you chose as <code>i j k</code>, otherwise you get the wrong sign on accident while the rotation remains unaffected (another point in favor of my preferred order).
+What's actually important is that they chose <code>e<sub>31</sub></code> instead of <code>e<sub>13</sub></code>, probably because it is more symmetric.
+Or maybe they were already fans of JPL Quaternions, because this choice is what swaps between the two variants.
+Let's look at more tables:
+        </p>
+        <figure>
+          <pre>
+ 1   │ e23  e13  e12      1   │ e23  e31  e12 
+─────┼───────────────    ─────┼───────────────
+ e23 │-1    e12 -e13      e23 │-1   -e12  e31 
+ e13 │-e12 -1    e23      e31 │ e12 -1   -e23 
+ e12 │ e13 -e23 -1        e12 │-e31  e23 -1   
+
+ e23*e13*e12 = -1         e23*e31*e12 =  1
+ e12*e13*e23 =  1         e12*e31*e23 = -1
+
+ I couldn't use subscripts because they're not monospace :(
+          </pre>
+        </figure>
+        <p>
+So either switching between <code>e<sub>13</sub></code> and <code>e<sub>31</sub></code> or switching the order of multiplication will lead to a sign swap.
+Though the latter does not affect the direction of rotation, because the only change is that we're actually calculating <code>kji</code> instead of <code>ijk</code>.
+Something nice with the geometric algebra version is, that when you write something like <code>e<sub>31</sub></code> instead of <code>j</code>, you are communicating which standard you're using, so there's less confusion to be had.
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2022-09-29 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
