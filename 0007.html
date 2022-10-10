@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml"/>
-    <link rel="stylesheet" type="text/css" href="style.css"/>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
     <title>random_float(min, max) - Lars' Website</title>
   </head>
 
@@ -50,14 +50,12 @@ Not enough to matter in most applications, but for example in a long-running mon
 So what is this horribly shameful way of calculating a random number? Here it is:
         </p>
         <figure>
-          <code>
-            <pre>
+          <pre>
 float absolutely_broken_random_float(float min, float max, RandomState& state)
 {
   return random_float(state) * (max - min) + min;
 }
-            </pre>
-          </code>
+          </pre>
         </figure>
         <p>
 You have probably seen this before, because pretty much every implementation does exactly that <a href="https://gcc.gnu.org/onlinedocs/libstdc++/latest-doxygen/a00446_source.html#l01823" target="_blank">[0]</a><a href="https://github.com/microsoft/STL/blob/c319a7b2e4eb302b9abe9427079e669bf38ad6f8/stl/inc/random#L2666" target="_blank">[1]</a>.
@@ -169,8 +167,7 @@ Now one multiplication with the step size and we're back in the original bounds,
 So here is everything discussed above tied together into a nice little function.
         </p>
         <figure>
-          <code>
-            <pre>
+          <pre>
 #include &lt;algorithm&gt; // std::max
 #include &lt;cmath&gt;     // std::nextafter, std::ceil, std::floor
 #include &lt;cstdint&gt;   // int32_t
@@ -184,8 +181,7 @@ float random_float(float min, float max, RandomState& state)
   int32_t imax = (int32_t)std::floor(max / max_delta);
   return (float)random_int32(imin, imax, state) * max_delta;
 }
-            </pre>
-          </code>
+          </pre>
         </figure>
         <p>
 Less nice is the performance of it: on a quick benchmark, it took 10 times as long to generate the same number of values as the biased float multiplication everyone is using.
