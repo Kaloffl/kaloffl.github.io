@@ -278,7 +278,7 @@ main:                                       │  main:
     ...                                     │  .L9:
 .L9:                                        │          tst r24
     movw r30,r16                            │          breq .L9
-    ld r24,Z      /* Z = ((r31<<8)|r30) */  │          sts send_ticks,__zero_reg__
+    ld r24,Z      /* Z = ((r31&lt;&lt;8)|r30) */  │          sts send_ticks,__zero_reg__
     tst r24                                 │          ...
     breq .L9                                │          rjmp .L10
     sts send_ticks,__zero_reg__             │  

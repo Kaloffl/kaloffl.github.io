@@ -500,8 +500,8 @@ void update() {
 
     // 1500µs is the neutral point, deviations up to +-512 are expected.
     int16_t deviation_us = high_us - 1500;
-    if (deviation_us < -512) deviation_us = -512;
-    if ( 512 < deviation_us) deviation_us =  512;
+    if (deviation_us &lt; -512) deviation_us = -512;
+    if ( 512 &lt; deviation_us) deviation_us =  512;
 
     // The output's neutral value is 90 with deviations up to +-8. 64 perfectly divides 512 into 8
     // and also allows the compiler to use shifts instead of division.

@@ -78,7 +78,7 @@ But luckily for us, when we deal with just two lines in 2D, we don't need a fanc
         <p>
 To locate the Origin relative to the parallelogram, we can use two numbers: how far along the B-A direction and how far along the D-C direction to go from the A-C corner?
 Let's call the first distance s and the second one t.
-If we have those two distances, it will also be trivial to check if the Origin lies in- or outside of the parallelogram: just check 0 <= s and s <= ||B-A|| and the equivalent for t.
+If we have those two distances, it will also be trivial to check if the Origin lies in- or outside of the parallelogram: just check 0 &lt;= s and s &lt;= ||B-A|| and the equivalent for t.
 Getting the real intersection point is also easy now, you can just start at point A and go s units along in the direction of B.
         </p>
         <p>
@@ -245,7 +245,7 @@ inline int line_line_intersection(
 
   auto s = i / h;
   auto t = j / h;
-  if (0.0f <= s && s <= 1.0f && 0.0f <= t && t <= 1.0f)
+  if (0.0f &lt;= s && s &lt;= 1.0f && 0.0f &lt;= t && t &lt;= 1.0f)
   {
     if (result)
     {

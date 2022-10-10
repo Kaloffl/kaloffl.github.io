@@ -43,7 +43,7 @@ inline int line_line_intersection(
   auto det = cross(d0, d1);
   auto s   = cross(d0, d2) / det;
   auto t   = cross(d1, d2) / det;
-  if (0.0f < s && s < 1.0f && 0.0f < t && t < 1.0f)
+  if (0.0f &lt; s && s &lt; 1.0f && 0.0f &lt; t && t &lt; 1.0f)
   {
     if (result) *result = line0_a + d0 * t;
     return 1;
@@ -69,7 +69,7 @@ Given points a, b, c, d
 line  l = a join b
 line  m = c join d
 point p = normalize(l meet m)
-bool intersects = (a - p) dot (b - p) < 0 && (c - p) dot (d - p) < 0
+bool intersects = (a - p) dot (b - p) &lt; 0 && (c - p) dot (d - p) &lt; 0
           </pre>
           <figcaption>Equation 0: pseudomath for finding a line segment intersection with PGA</figcaption>
         </figure>
@@ -98,7 +98,7 @@ inline int line_line_intersection(
   auto det =  ab_x * cd_y - ab_y * cd_x;
   auto s   = (ab_x * ca_y - ab_y * ca_x) / det;
   auto t   = (cd_x * ca_y - cd_y * ca_x) / det;
-  if (0.0f <= s && s <= 1.0f && 0.0f <= t && t <= 1.0f)
+  if (0.0f &lt;= s && s &lt;= 1.0f && 0.0f &lt;= t && t &lt;= 1.0f)
   {
     if (result) *result = {
       line1_a.x + ab_x * t,
@@ -136,7 +136,7 @@ inline int line_line_intersection(
   auto s = (line1_a.x - p_20) * (line1_b.x - p_20) + (line1_a.y - p_01) * (line1_b.y - p_01); 
   auto t = (line2_a.x - p_20) * (line2_b.x - p_20) + (line2_a.y - p_01) * (line2_b.y - p_01); 
 
-  if (s <= 0.0f && t <= 0.0f)
+  if (s &lt;= 0.0f && t &lt;= 0.0f)
   {
     if (result)
     {
