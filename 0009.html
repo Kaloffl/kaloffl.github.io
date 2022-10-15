@@ -291,10 +291,10 @@ And if you ever find yourself on a deserted island with no internet you will be 
         <p>
 Though that conjugate is a bit weird.
 And doesn't Quaternion rotation require normalized Quaternions?
-Well, we won't have to worry about both of these things if we just change the formula for Quaternion rotation a bit: <code><b>q</b><sup>-1</sup><b>v</b><b>q</b></code>.
+Well, we won't have to worry about both of these things if we just change the formula for Quaternion rotation a bit: <code><b>q</b><b>v</b>/<b>q</b></code>.
         </p>
         <p>
-Wait what's <code><b>q</b><sup>-1</sup></code>?
+Wait what's Quaternion division?
 Okay, this article is already getting quite long, so I'll not go into all the details and just say <code><b>q</b><sup>-1</sup> = ~<b>q</b>/(|<b>q</b>|<sup>2</sup>)</code>.
 You can check yourself that any Quaternion divided by itself will be 1 (except division by 0 of course).
 The <code>|<b>q</b>|<sup>2</sup></code> thing is called the quadrature and will help us out again later.

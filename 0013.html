@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Quaternion = Quaternion - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>Quaternion = Quaternion</h2>
+        <div>First published: <time>2022-10-15</time></div>
+      </header>
+
+      <section>
+        <p>
+In the <a target="_blank" href="0012.html">previous article</a> I wrote about the two major conventions for implementing Quaternions and how they were actually the same when viewed through the lens of geometric algebra.
+This time I want to hammer that point home with another example.
+        </p>
+        <p>
+But before that, a shout-out to this great paper:
+<a target="_blank" href="https://arxiv.org/abs/1711.02508">Quaternion kinematics for the error-state Kalman filter</a> by Joan Solà.
+About a third of this paper just talks about Quaternions, their properties, operations on and with them, it's great!
+One of the chapters also talks about the different conventions and that there are more than just Hamiltonian and JPL.
+        </p>
+      </section>
+      <section>
+        <h3>What's affected?</h3>
+        <p>
+All this talk about conventions and handedness, but which operations will actually produce different results when another convention is used?
+Spoilers for the end of the article: none.
+But let's not get ahead of ourselves, there are <a target="_blank" href="https://github.com/PX4/PX4-Matrix/issues/28">issues</a> on Github talking about different implementations of the Quaternion multiplication.
+So clearly when the multiplication changes, operations base on it, like Quaternion division and the vector rotation, will also change.
+Multiplying vectors together to get a Quaternion is also affected, since the resulting Quaternion has to contain different coefficients depending on the convention.
+In particular its asymmetric part, the outer product, changes.
+        </p>
+        <p>
+There are a bunch of operations that are not affected by conventions:
+the simple addition and subtraction, although seldom used, will just keep doing their thing.
+Scalar multiplication and division stay the same.
+Taking the quadrature, length or norm of a Quaternion is also unaffected.
+Interestingly despite the changing multiplication, squaring a Quaternion will not change between conventions, the same is true for taking its square root. 
+And finally operations like <code>exp</code>, <code>log</code> and <code>pow</code> remain the same.
+        </p>
+      </section>
+
+      <section>
+        <h3>A closer look</h3>
+        <p>
+Let's look at the two multiplications mentions in the issue I linked above.
+I've changed from their index-based code to using subscripts.
+        </p>
+        <figure>
+          <pre>
+r = p * q
+
+Hamilton:
+r<sub>s</sub> = p<sub>s</sub> * q<sub>s</sub> - p<sub>i</sub> * q<sub>i</sub> - p<sub>j</sub> * q<sub>j</sub> - p<sub>k</sub> * q<sub>k</sub>; 
+r<sub>i</sub> = p<sub>s</sub> * q<sub>i</sub> + p<sub>i</sub> * q<sub>s</sub> + p<sub>j</sub> * q<sub>k</sub> - p<sub>k</sub> * q<sub>j</sub>; 
+r<sub>j</sub> = p<sub>s</sub> * q<sub>j</sub> - p<sub>i</sub> * q<sub>k</sub> + p<sub>j</sub> * q<sub>s</sub> + p<sub>k</sub> * q<sub>i</sub>; 
+r<sub>k</sub> = p<sub>s</sub> * q<sub>k</sub> + p<sub>i</sub> * q<sub>j</sub> - p<sub>j</sub> * q<sub>i</sub> + p<sub>k</sub> * q<sub>s</sub>;
+
+
+Non-Hamilton (Hamilnot?):
+r<sub>s</sub> = p<sub>s</sub> * q<sub>s</sub> - p<sub>i</sub> * q<sub>i</sub> - p<sub>j</sub> * q<sub>j</sub> - p<sub>k</sub> * q<sub>k</sub>;
+r<sub>i</sub> = p<sub>s</sub> * q<sub>i</sub> + p<sub>i</sub> * q<sub>s</sub> - p<sub>j</sub> * q<sub>k</sub> + p<sub>k</sub> * q<sub>j</sub>;
+r<sub>j</sub> = p<sub>s</sub> * q<sub>j</sub> + p<sub>i</sub> * q<sub>k</sub> + p<sub>j</sub> * q<sub>s</sub> - p<sub>k</sub> * q<sub>i</sub>;
+r<sub>k</sub> = p<sub>s</sub> * q<sub>k</sub> - p<sub>i</sub> * q<sub>j</sub> + p<sub>j</sub> * q<sub>i</sub> + p<sub>k</sub> * q<sub>s</sub>;
+          </pre>
+        </figure>
+        <p>
+When staring at these two formulations long enough (or when looking at the <a target="_blank" href="https://github.com/PX4/PX4-Matrix/commit/19554c4470cd6322ffd18cb20a96485940f226b6?diff=split#diff-e6ff1cd48fcdade4c4e02cf799c912b9de2a2ffdaf8e8390c9d3a50c156625e6L190">diff</a>), we might notice that the only changes are sign flips.
+In fact, the sign changes are only in relation to <code>j</code>, which leads me to conclude that <code>j<sub>Hamilton</sub> = -j<sub>not-Hamilton</sub></code>. 
+        </p>
+        <p>
+Where have we seen that before?
+Right, it's our friend <code>e<sub>13</sub></code> vs <code>e<sub>31</sub></code> again.
+Because the Quaternion "vector part" is actually made of three bi-vectors like <code>e<sub>12</sub></code>, <code>e<sub>23</sub></code> and <code>e<sub>31</sub></code>.
+The subscript numbers say from which two basis vectors these basis bi-vectors are made.
+And if we swap the order of these numbers in the subscript, we have to add a minus in the front: <code>e<sub>31</sub> = -e<sub>13</sub></code>.
+I won't go into why that is here, but it's one of the fundamental rules of geometric algebra.
+        </p>
+        <p>
+Given all this, the two implementations above are mathematically equivalent.
+It's just that one has defined <code>j</code> as <code>e<sub>31</sub></code> and the other as <code>e<sub>13</sub></code>.
+So really the question is not "How is your multiplication defined?" but instead "How is your representation defined?".
+        </p>
+        <p>
+Because the whole issue seems to arise from the differing definitions of <code>j</code>, the lesson for me here is that you shouldn't use the names <code>i</code>, <code>j</code> and <code>k</code> as they don't carry all the information we need.
+If you don't like <code>e<sub>12</sub></code>, you could instead use <code>xy</code>, <code>yz</code>, <code>zx</code>, which also display the order you've chosen.
+Although this won't help us communicating whether we've chosen <code>x</code>, <code>y</code> and <code>z</code> to be a left-handed or right-handed basis to begin with.
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2022-10-15 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
