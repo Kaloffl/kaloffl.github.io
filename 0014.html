@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Turns instead of radians with Quaternions - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>Turns instead of radians with Quaternions</h2>
+        <div>First published: <time>2022-10-19</time></div>
+      </header>
+
+      <section>
+        <p>
+No, I'm not addicted to Quaternions.
+I can stop whenever I want, I promise!
+        </p>
+        <p>
+One way to create Quaternions that rotate a vector in a certain plane for a given angle is to use the Quaternion exponential with a "pure Quaternion", aka a Bi-vector multiplied with the angle, like this:
+        </p>
+        <figure>
+          <pre>
+auto angle = random_f32(-Pi, Pi);
+auto rot   = exp(Quat{0, 1, 0, 0} * angle / 2);
+          </pre>
+        </figure>
+        <p>
+You also have to divide the angle by 2, because the Quaternion rotation rotates by twice the encoded angle.
+        </p>
+        <p>
+As the example shows, the angle is given in radians, in this case rotating somewhere between a quarter turn in either direction on the <code>YZ</code> plane.
+While <code>exp</code> on Complex Numbers is somewhat well known due to <a target="_blank" href="https://en.wikipedia.org/wiki/Euler%27s_identity">Euler's identity</a>, shockingly few implementations of Quaternions I found have definitions for it.
+So let's quickly go over it here:
+        </p>
+        <figure>
+          <pre>
+Math:
+  q = a + b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>
+  θ = |b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>|
+
+  e<sup>q</sup> = e<sup>a</sup>(cos(θ) +
+          sin(θ) * (b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>)/θ)
+
+Code:
+  Quaternion exp(Quaternion q) {
+    auto e = exp(q.cs);
+    auto theta = sqrt(square(q.c23) + square(q.c31) + square(q.c12));
+    auto s = e * sin(theta) / theta;
+    return {
+      .cs  = e * cos(theta),
+      .c23 = s * q.c23,
+      .c31 = s * q.c31,
+      .c12 = s * q.c12
+    };
+  }
+          </pre>
+        </figure>
+        <p>
+While I'm not going to prove this here, you can see that it will work as expected for Real Numbers, where <code>θ</code> is 0, as well as for Complex Numbers, where <code>b</code> and <code>c</code> are 0.
+        </p>
+        <p>
+Okay, but the title says that we're not using radians, while the <code>exp</code> function clearly does, what gives?
+For us to abandon radians, we have to look a little further, at the <code>pow</code> function.
+It is defined like this:
+        </p>
+        <figure>
+          <pre>
+q<sup>a</sup> = exp(log(q) * a)
+          </pre>
+        </figure>
+        <p>
+So now we also need the Quaternion logarithm, great.
+But before that, let's think about what we should expect from the <code>pow</code> function.
+A unit Bi-vector like <code><b>e<sub>xy</sub></b></code> is the result of multiplying the two unit-vectors <code><b>e<sub>x</sub></b></code> and <code><b>e<sub>y</sub></b></code> together, which are perpendicular to each other, which makes a quarter turn.
+The Quaternion rotation always rotates by twice the angle that is encoded in the Quaternion, so we get a half-turn.
+Taking a Quaternion as-is is the same as taking <code>q<sup>1</sup></code> and doing no rotation, which would just be <code>1</code>, can be achieved with <code>q<sup>0</sup></code>.
+And <code>q<sup>0.5</sup></code> should be the same as <code>√q</code> which I've written about <a target="_blank" href="0009.html">before</a> and halves the rotation.
+So we can use the <code>pow</code> function between 0 and 1 to linearly interpolate between a 0° and 180° turn, and of course from 1 to 2 to get the rest of the circle.
+What we won't need anymore is to put <code>π</code> in our calculation, yay!
+        </p>
+        <figure>
+          <pre>
+auto turn = random_f32(-0.5f, 0.5f);
+auto rot  = pow(Quat{0, 1, 0, 0}, turn);
+          </pre>
+        </figure>
+        <p>
+But now let's bite the bullet, what's the logarithm of a Quaternion?
+        </p>
+        <figure>
+          <pre>
+Math:
+  q = a + b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>
+  θ = |b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>|
+
+  log(q) = log(|q|) +
+           acos(a / |q|) * (b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>)/θ
+
+Code:
+  Quaternion log(Quaternion q) {
+    auto theta = sqrt(square(q.c23) + square(q.c31) + square(q.c12));
+    auto norm = abs(q);
+    auto a = acos(q.cs / norm) / theta;
+    return {
+      .cs  = log(norm),
+      .c23 = a * q.c23,
+      .c31 = a * q.c31,
+      .c12 = a * q.c12
+    };
+  }
+          </pre>
+        </figure>
+        <p>
+In both code snippets I've left out handling of zero-divisions, but you can already see, those are some chonkers.
+And we're supposed call both of these functions whenever we want to rotate something?
+Not quite: only when we want to rotate on a certain plane around a certain amount, which at least to me happens quite infrequently.
+Otherwise we can just use the <a target="_blank" href="0009.html">Vector-Vector product</a> to turn from one to the other.
+And one pore point: since <code>exp</code> and <code>log</code> are inverse functions of each other, we might be able to cancel out a bunch of stuff if we inline them.
+While there are already very few Quaternion implementations that have <code>log</code> and <code>exp</code> functions, even fewer have <code>pow</code>.
+Only one I found didn't implement <code>pow</code> in by calling <code>exp(log(q)*e)</code> and that one had a bug.
+So here's my hopefully less-buggy version, I don't know it it could be improved further.
+        </p>
+        <figure>
+          <pre>
+Quaternion pow(Quaternion q, float e) {
+  auto theta_square = square(q.c23) + square(q.c31) + square(q.c12);
+  auto norm = sqrt(square(q.cs) + theta_square);
+  auto p = pow(norm, e);
+  auto a = e * acos(q.cs / norm);
+  auto s = p / sqrt(theta_square) * sin(a);
+  return {
+    .cs  = p * cos(a),
+    .c23 = s * q.c23,
+    .c31 = s * q.c31,
+    .c12 = s * q.c12
+  };
+}
+          </pre>
+        </figure>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2022-10-19 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
