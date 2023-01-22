@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>AMD64 machinecode - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>AMD64 machinecode</h2>
+        <div>First published: <time>2023-01-22</time></div>
+      </header>
+
+      <section>
+        <p>
+It's been a while.
+But it's hard to find the time and energy to write a blogpost when most of your waking time is spent implementing over 1300 machine instructions and over 16000 unit tests to verify them.
+        </p>
+        <p>
+Let's start at the beginning.
+A <a href="0011.html" target="_blank">few months ago</a> I started looking into building a just-in-time codegenerator to build a fast renderer for shapes defined by complex (in both meanings of the word) math formulas.
+The formulas are stored as bytecode and at the time the renderer would use a primitive interpreter to evaluate them.
+To avoid running the interpreter for each pixel, the whole thing worked in a quadtree-fashion: check a large box for intersection with the shape, if one exists, subdivide into 4 boxes and check each one again until pixel-resolution is reached.
+This way most of the interior pixels could be filled in bulk and the exterior pixels could be skipped, leading only the boundary that required the shape to be evaluated on a pixel-scale.
+After each successful intersection check, the renderer also created an optimized copy of the shape's bytecode where it threw out all operations that didn't contribute to the previously calculated intersection.
+However I wasn't super happy with the performance and decided to replace the interpreter with a just-in-time assembler.
+        </p>
+        <p>
+It took two more months until I got serious enough to test the idea with a tiny JIT that knew very few instructions and spew garbage if you only looked at it the wrong way.
+While most of the job could be achieved by just writing pre-compiled bytes for each instruction, I wanted to have more control over the output, in case I was going to add a register allocater.
+Over time I added more and more instructions and encoding features to the JIT: after the scalar floating point instructions came the 4x SIMD <code>VEX</code> instructions, then 16x SIMD <code>EVEX</code> (aka AVX-512) instructions which my CPU luckily supports.
+Then there were a bunch of general purpose instructions I needed to manage the registers and the stack when I want to call my code from C++ without corrupting everything.
+And before I knew it, I started implementing the entire set of IA64 instruction listed in the <a href="https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html" target="_blank">Intel Architecture Manual</a>.
+        </p>
+        <p>
+At first the only test to validate my implementation was the renderer, which often broke when I tried to add another of the many memory-operand features that x64 supports.
+But I realized pretty quickly that it was necessary to have multiple unit-tests for each instruction to make sure the implementation was solid.
+So I started to ping-pong back and forth between generating a bunch of test cases for a hand full of instructions and then implementing them in the assembler.
+And as I wrote in the beginning: there are a lot of tests.
+So many in fact, that I ran into a stack-overflow halfway through, despite the test executable never going more than 4 calls deep.
+I never debugged why that was, I just guessed that Clang always allocates new space for temporary objects on the stack in debug builds which eventually exceeded 1MB, so I just split the function in 3 which fixed it.
+(does that mean that long functions are UB in C++?)
+        </p>
+        <p>
+Now that the assembler is mostly finished, I'm not really sure what to do with it.
+It certainly was a great learning opportunity, but it being complete works against its original purpose: all these instructions and special cases make it slower than it could be for the renderer.
+I guess I could put lot's of <code>ifdef</code>s around or make a copy and delete all the cruft.
+I'll eventually release it on Github, after I manage to untangle it from the rest of my toy codebase.
+        </p>
+        <p>
+But let's stop with this life journal and get technical.
+I tried to condense all the possible bits of the AMD64 instruction encoding into a big graph(ic).
+Below that follows a description what all those letters mean and some examples.
+I'm sure that I've missed something or got something wrong, so apologies in advance.
+        </p>
+      </section>
+
+      <figure>
+        <pre>
+            Legacy Prefix              ┆                                                          Encoding Prefix                                                                                       Opcode                 ┆             ModR/M                              SIB                                                                              Displacement                                                                             ┆                                                                  Immediate
+    67h                                ┆                                                                                                                                                    Primary Opcode Map + Operand       ┆    ModRM                                                                                                                                                                                                                  ┆    Immediate8 Op.imm
+   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ┆   Default Encoding                                                                                                                                ╭───┬───┬───┬───┬───┬───┬───┬───╮   ┆   ╭───┬───┬───┬───┬───┬───┬───┬───╮                                                                                                                                                                                       ┆   ╭───┬───┬───┬───┬───┬───┬───┬───╮
+─┬─┤ 0 │ 1 │ 1 │ 0 │ 0 │ 1 │ 1 │ 1 ├─┬───┬───────────────────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────┤        Opcode     │    Reg    ├─┬───┬─┤ 0 │ 0 │    Reg    │   Base    ├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬───┬─┤      Reg      │   Immediate   ├End
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │                                   │                                                                                                             ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯                                                                                                                                                                                     │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯
+ │  66h                              │ ┆ │  REX Prefix                       │                                                                                                              Primary Opcode Map               │ ┆ │  ModRM                               SIB                                                                                                                                                                              │ ┆ │  Immediate8
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │                                                                                                             ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮                                                                                                                                                 │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮                                       ╭───┬───┬───┬───┬───┬───┬───┬───╮
+ ├─┤ 0 │ 1 │ 1 │ 0 │ 0 │ 1 │ 1 │ 0 ├─┤ ┆ ├─┤ 0 │ 1 │ 0 │ 0 │ W │ R │ X │ B ├─┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────┤             Opcode            ├─┤ ┆ ├─┤ 0 │ 0 │    Reg    │ 1 │ 0 │ 0 ├───┤ Scale │   Index   │   Base    ├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤ ┆ ├─┤        Immediate[0:7]         ├End                                  ┌─┤        Immediate2[0:7]        ├End
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │                                                                                                             ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯                                                                                                                                                 │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯                                     │ ╰───┴───┴───┴───┴───┴───┴───┴───╯
+ │  F3h                              │ ┆ │                                   │  0F Escape                                                                                                   0Fh Opcode Map                   │ ┆ │  ModRM                                                                                                                                                                                                                │ ┆ │  Immediate16                                                          │ 
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │                                   │ ╭───┬───┬───┬───┬───┬───┬───┬───╮                                                                           ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮                                                                                                                                                                                     │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ 
+ ├─┤ 1 │ 1 │ 1 │ 1 │ 0 │ 0 │ 1 │ 1 ├─┤ ┆ │                                   └─┤ 0 │ 0 │ 0 │ 0 │ 1 │ 1 │ 1 │ 1 ├─┬─────────────────────────────────────────────────────────────────────────┤            Opcode             ├─┤ ┆ ├─┤ 0 │ 0 │    Reg    │ 1 │ 0 │ 1 ├─────────────────────────────────────┐                                                                                                                                               │ ┆ ├─┤        Immediate[0:7]         ├───┤        Immediate[8:15]        ├─┴─End
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │                                     ╰───┴───┴───┴───┴───┴───┴───┴───╯ │                                                                         ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯                                     │                                                                                                                                               │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   
+ │  F2h                              │ ┆ │                                                                       │  38h                                                                     0F_38h Opcode Map                │ ┆ │  ModRM                                                                │  Displacement32                                                                                                                               │ ┆ │  Immediate32
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │                                                                       │ ╭───┬───┬───┬───┬───┬───┬───┬───╮                                       ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮                                     │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
+ ├─┤ 1 │ 1 │ 1 │ 1 │ 0 │ 0 │ 1 │ 0 ├─┤ ┆ │                                                                       ├─┤ 0 │ 0 │ 1 │ 1 │ 1 │ 0 │ 0 │ 0 ├───────────────────────────────────────┤             Opcode            ├─┤ ┆ ├─┤ 1 │ 0 │    Reg    │   Base    ├─────────────────────────────────────┼─┤       Displacement[0:7]       ├───┤       Displacement[8:15]      ├───┤      Displacement[16:23]      ├───┤      Displacement[24:31]      ├─┤ ┆ └─┤        Immediate[0:7]         ├───┤        Immediate[8:15]        ├───┤        Immediate[16:23]       ├───┤        Immediate[24:31]       ├End
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │                                                                       │ ╰───┴───┴───┴───┴───┴───┴───┴───╯                                       ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯                                     │ ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
+ │  F0h                              │ ┆ │                                                                       │  3Ah                                                                     0F_3Ah Opcode Map                │ ┆ │  ModRM                               SIB                              │                                                                                                                                               │ ┆
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │                                                                       │ ╭───┬───┬───┬───┬───┬───┬───┬───╮                                       ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮ │                                                                                                                                               │ ┆
+ ├─┤ 1 │ 1 │ 1 │ 1 │ 0 │ 0 │ 0 │ 0 ├─┤ ┆ │                                                                       └─┤ 0 │ 0 │ 1 │ 1 │ 1 │ 0 │ 1 │ 0 ├───────────────────────────────────────┤             Opcode            ├─┤ ┆ ├─┤ 1 │ 0 │    Reg    │ 1 │ 0 │ 0 ├───┤ Scale │   Index   │   Base    ├─┘                                                                                                                                               │ ┆
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │                                                                         ╰───┴───┴───┴───┴───┴───┴───┴───╯                                       ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯                                                                                                                                                 │ ┆
+ │  2Eh                              │ ┆ │  C5h  2-byte VEX Prefix                                                                                                                          VEX 0Fh Opcode Map               │ ┆ │  ModRM                                                                   Displacement8                                                                                                                                │ ┆
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮                                                                           ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮                                       ╭───┬───┬───┬───┬───┬───┬───┬───╮                                                                                                             │ ┆
+ ├─┤ 0 │ 0 │ 1 │ 0 │ 1 │ 1 │ 1 │ 0 ├─┤ ┆ ├─┤ 1 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 │ 1 ├───┤ R │     vvvv      │ L │  pp   ├───────────────────────────────────────────────────────────────────────────┤             Opcode            ├─┤ ┆ ├─┤ 0 │ 1 │    Reg    │   Base    ├─────────────────────────────────────┬─┤       Displacement[0:7]       ├─────────────────────────────────────────────────────────────────────────────────────────────────────────────┤ ┆
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯                                                                         ^ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯                                     │ ╰───┴───┴───┴───┴───┴───┴───┴───╯                                                                                                             │ ┆
+ │  3Eh                              │ ┆ │  C4h  3-Byte VEX Prefix                                                                                                                       │  VEX 0F_38h Opcode Map            │ ┆ │  ModRM                               SIB                              │  Displacement/N                                                                                                                               │ ┆
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮                                     │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮                                                                                                             │ ┆
+ ├─┤ 0 │ 0 │ 1 │ 1 │ 1 │ 1 │ 1 │ 0 ├─┤ ┆ ├─┤ 1 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 │ 0 ├───┤ R │ X │ B │       mmmmm       ├───┤ W │     vvvv      │ L │  pp   ├─────────────────────────────────────┼─┤             Opcode            ├─┤ ┆ ├─┤ 0 │ 1 │    Reg    │ 1 │ 0 │ 0 ├───┤ Scale │   Index   │   Base    ├─┴─┤         Displacement/N        ├─────────────────────────────────────────────────────────────────────────────────────────────────────────────┤ ┆
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯                                     │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯                                                                                                             │ ┆
+ │  26h                              │ ┆ │                                                                                                                                               │  VEX 0F_3Ah Opcode Map            │ ┆ │  ModRM                                                                                                                                                                                                                │ ┆
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │                                                                                                                                               │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮                                                                                                                                                                                     │ ┆
+ ├─┤ 0 │ 0 │ 1 │ 0 │ 0 │ 1 │ 1 │ 0 ├─┤ ┆ │                                                                                                                                               └─┤             Opcode            ├─┤ ┆ ├─┤ 1 │ 1 │    Reg    │    Reg    ├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤ ┆
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │                                                                                                                                                 ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯                                                                                                                                                                                     │ ┆
+ │  64h                              │ ┆ │  8Fh  XOP Prefix, same structure as 3-byte VEX                                                                                                   XOP Opcode Map 8h                │ ┆ │                                                                                                                                                                                                                       │ ┆
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮                                       ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │                                                                                                                                                                                                                       │ ┆
+ ├─┤ 0 │ 1 │ 1 │ 0 │ 0 │ 1 │ 0 │ 0 ├─┤ ┆ ├─┤ 1 │ 0 │ 0 │ 0 │ 1 │ 1 │ 1 │ 1 ├───┤ R │ X │ B │       mmmmm       ├───┤ W │     vvvv      │ L │  pp   ├─────────────────────────────────────┬─┤             Opcode            ├─┤ ┆ ├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ ┆
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯                                     │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │                                                                                                                                                                                                                         ┆
+ │  65h                              │ ┆ │                                                                                                                                               │  XOP Opcode Map 9h                │ ┆ │ Displacement64
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │                                                                                                                                               │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
+ ├─┤ 0 │ 1 │ 1 │ 0 │ 0 │ 1 │ 0 │ 1 ├─┤ ┆ │                                                                                                                                               ├─┤             Opcode            ├─┤ ┆ ├─┤       Displacement[0:7]       ├───┤       Displacement[8:15]      ├───┤      Displacement[16:23]      ├───┤      Displacement[24:31]      ├───┤      Displacement[32:39]      ├───┤      Displacement[40:47]      ├───┤      Displacement[48:55]      ├───┤      Displacement[56:63]      ├─End
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │                                                                                                                                               │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
+ │  36h                              │ ┆ │                                                                                                                                               │  XOP Opcode Map Ah                │ ┆ │  Immediate64
+ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │                                                                                                                                               │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
+ ├─┤ 0 │ 0 │ 1 │ 1 │ 0 │ 1 │ 1 │ 0 ├─┤ ┆ │                                                                                                                                               └─┤             Opcode            ├─┤ ┆ └─┤        Immediate[0:7]         ├───┤        Immediate[8:15]        ├───┤        Immediate[16:23]       ├───┤        Immediate[24:31]       ├───┤        Immediate[32:39]       ├───┤        Immediate[40:47]       ├───┤        Immediate[48:55]       ├───┤        Immediate[56:63]       ├─End
+ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆ │                                                                                                                                                 ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
+ │                                   │ ┆ │  62h  EVEX Prefix                                                                                                                                EVEX 0Fh Opcode Map              │ ┆
+ │  No Legacy Prefix                 │ ┆ │ ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆
+ └───────────────────────────────────┤ ┆ └─┤ 0 │ 1 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 ├───┤ R │ X │ B │ R'│ 0 │ 0 │  mm   ├───┤ W │     vvvv      │ 1 │  pp   ├───┤ z │   LL  │ b │ V'│    aaa    ├─┬─┤             Opcode            ├─┤ ┆
+ ^                                   │ ┆   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆
+ │  There can be multiple prefixes   │ ┆                                                                                                                                                 │  EVEX 0F_38h Opcode Map           │ ┆
+ └───────────────────────────────────┘ ┆                                                                                                                                                 │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆
+                                       ┆                                                                                                                                                 ├─┤             Opcode            ├─┤ ┆
+                                       ┆                                                                                                                                                 │ ╰───┴───┴───┴───┴───┴───┴───┴───╯ │ ┆
+                                       ┆                                                                                                                                                 │  EVEX 0F_3Ah Opcode Map           │ ┆
+                                       ┆                                                                                                                                                 │ ╭───┬───┬───┬───┬───┬───┬───┬───╮ │ ┆
+                                       ┆                                                                                                                                                 └─┤             Opcode            ├─┘ ┆
+                                       ┆                                                                                                                                                   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ┆
+        </pre>
+      </figure>
+
+      <section>
+        <h3>Legacy Prefix</h3>
+        <p>
+Let's start from the left with the <i>Legacy Prefix</i>.
+An instruction can have multiple of these, and their meaning can depend on the instruction itself.
+<code>67<sub>16</sub></code> is the <i>address size override</i>.
+In 64-bit mode you're usually loading and storing to 64-bit addresses stored in 64-bit registers like <code>rax</code>.
+This prefix switches the instruction to 32-bit addresses, which means only <code>eax</code> is used.
+I haven't found any real use for it yet.
+        </p>
+        <figure>
+          <pre>
+03 0A    | add ecx, [rdx]
+<b>67</b> 03 0A | add ecx, [edx]
+          </pre>
+        </figure>
+        <p>
+Next is <code>66<sub>16</sub></code> which is the <i>operand size override</i>.
+Operands are 32-bit by default and this prefix changes them to be 16-bit.
+8-bit operations have their own opcode and 64-bit operations are done via the <code>REX.W</code> bit, which we'll discus later.
+This prefix is also used together with <code>F3<sub>16</sub></code> and <code>F2<sub>16</sub></code> as opcode extension for multi-byte opcodes that start with <code>0F<sub>16</sub></code>.
+Usually those are SSE instruction where the prefixes are selecting between packed/single and double/single precision.
+Without a prefix the default is <i>packed single</i>, <code>66<sub>16</sub></code> selects the <i>packed double</i> variant.
+        </p>
+        <figure>
+          <pre>
+<b>66</b> 03 0A    | add cx, [rdx]
+0F 58 CA    | addps xmm1, xmm2
+<b>66</b> 0F 58 CA | addpd xmm1, xmm2
+          </pre>
+        </figure>
+        <p>
+The repeat-zero-prefix <code>F3<sub>16</sub></code> can only be used with a few specific instructions.
+With those it is possible to run loops entirely on the CPU, without any compare and branch instructions.
+The value in <code>rcx</code> is used as a loop counter, repeating the instruction and decrementing until it reaches zero or until the zero flag is cleared.
+One popular example is <code>rep movs</code> which is a very concise way to implement <code>memcpy</code>.
+Unfortunately more complicated <code>memcpy</code> implementations are often faster.
+        </p>
+        <p>
+For SSE instructions this prefix is used as an opcode extension, usually selecting the <i>single single</i> aka f32-scalar variant.
+        </p>
+        <figure>
+          <pre>
+<b>F3</b> A4 | rep movsd [rdi], [rsi]
+
+<b>F3</b> 0F 58 CA | addss xmm1, xmm2
+          </pre>
+        </figure>
+        <p>
+The repeat-nonzero-prefix <code>F2<sub>16</sub></code> is almost the same as the repeat-zero above, with the difference that the second termination criterion is that the zero flag is set.
+For SSE instructions it selects the <i>single double</i> aka f64-scalar variant.
+        </p>
+        <p>
+Having any of these three opcode-extension prefixes in front of a <code>VEX</code>, <code>XOP</code> or <code>EVEX</code> instruction is not permitted, but showing that in the diagram would have made it even more complicated...
+        </p>
+        <figure>
+          <pre>
+<b>F2</b> 0F 58 CA | addsd xmm1, xmm2
+          </pre>
+        </figure>
+        <p>
+<code>F0<sub>16</sub></code> is the lock prefix, which can be applied to certain operations that read, modify and write memory, to make them atomic.
+        </p>
+        <figure>
+          <pre>
+<b>F0</b> 0F B1 11 | lock cmpxchg [rcx], edx
+          </pre>
+        </figure>
+        <p>
+<code>2E<sub>16</sub></code>, <code>3E<sub>16</sub></code>, <code>26<sub>16</sub></code>, <code>64<sub>16</sub></code>, <code>65<sub>16</sub></code>, <code>36<sub>16</sub></code> are segment-override prefixes.
+However, in 64-bit mode only <code>64<sub>16</sub></code> and <code>65<sub>16</sub></code> do anything, the rest are ignored.
+Using them adds the content of the <code>fs</code> or <code>gs</code> registers as an offset to the address calculation of the instruction.
+This might be useful when accessing thread-local memory, because Windows and Linux use these segment registers for that.
+        </p>
+        <p>
+<code>2E<sub>16</sub></code> and <code>3E<sub>16</sub></code> also used to be branch-hints for conditional jump instructions, but that doesn't seem to be a thing anymore.
+        </p>
+        <figure>
+          <pre>
+<b>64</b> 8B 0A | mov ecx, fs:[rdx]
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>REX</h3>
+        <figure>
+          <pre>
+ REX Prefix
+╭───┬───┬───┬───┬───┬───┬───┬───╮
+┤ 0 │ 1 │ 0 │ 0 │ W │ R │ X │ B ├
+╰───┴───┴───┴───┴───┴───┴───┴───╯
+          </pre>
+        </figure>
+        <p>
+The <code>REX</code> prefix can be applied to any legacy instruction to imbue it with some new features.
+The prefix is one byte long and contains 4 modifier bits that are detailed below, but even the presence of this prefix already has an effect.
+By default there are these 8 8-bit operands: <code>al</code>, <code>cl</code>, <code>dl</code>, <code>bl</code>, <code>ah</code>, <code>ch</code>, <code>dh</code>, <code>bh</code>.
+Where for example <code>al</code> and <code>ah</code> are the low and high byte of the 16-bit <code>ax</code> register.
+When the <code>REX</code> prefix is present, the last 4 registers change to <code>spl</code>, <code>bpl</code>, <code>sil</code>, <code>dil</code> which are the low bytes of the equivalent 16-bit registers.
+        </p>
+        <p>
+All the bits in the <code>REX</code> prefix can also be encoded in the <code>VEX</code>, <code>XOP</code> and <code>EVEX</code> prefixes where they serve the same purpose.
+        </p>
+        <figure>
+          <pre>
+00 E8    | add al, ch
+<b>40</b> 00 E8 | add al, bpl
+          </pre>
+        </figure>
+        <p>
+<code>W</code> is a modifier bit introduced in the <code>REX</code> prefix, that changes instructions to 64-bit operations.
+When set, the <code>66<sub>16</sub></code> size override is ignored.
+        </p>
+        <figure>
+          <pre>
+01 D1    | add ecx, edx
+<b>48</b> 01 D1 | add rcx, rdx
+          </pre>
+        </figure>
+        <p>
+By default, instructions have only 3 bits to select their operands.
+With <code>R</code> there is a fourth bit available for the <code>reg</code> operand, giving access to registers <code>r8</code> - <code>r15</code>.
+<code>X</code> does the same but for the <code>SIB.index</code> operand which we'll come to later.
+And finally <code>B</code> applies to <code>ModRM.r/m</code>, <code>SIB.base</code> or the operand embedded in the opcode.
+        </p>
+        <figure>
+          <pre>
+48 03 0A | add rcx, [rdx]
+<b>4C</b> 03 0A | add r9, [rdx]
+
+48 03 0C 1A | add rcx, [rdx + rbx]
+<b>4A</b> 03 0C 1A | add rcx, [rdx + r11]
+
+48 03 0A | add rcx, [rdx]
+<b>49</b> 03 0A | add rcx, [r10]
+48 0F C9 | bswap rcx
+<b>49</b> 0F C9 | bswap r9
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>VEX</h3>
+        <figure>
+          <pre>
+ C5h  2-byte VEX Prefix
+╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
+┤ 1 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 │ 1 ├───┤ R │     vvvv      │ L │  pp   ├
+╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
+ C4h  3-Byte VEX Prefix
+╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
+┤ 1 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 │ 0 ├───┤ R │ X │ B │       mmmmm       ├───┤ W │     vvvv      │ L │  pp   ├
+╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
+          </pre>
+        </figure>
+        <p>
+The <code>VEX</code> encoding is what pretty much all floating-point code on AMD and Intel CPUs uses nowadays.
+It incorporates and extends the existing SSE instructions, allows for 256-bit registers and adds a third operand.
+There are two versions of it: the 2-byte and the 3-byte prefix, allowing for shorter encoding of the more common instructions.
+Despite these extra features, the encoding is often the same size as the legacy encoding, because the <code>66<sub>16</sub></code>, <code>F2<sub>16</sub></code>, <code>F3<sub>16</sub></code>, <code>0F<sub>16</sub></code>, <code>0F_38<sub>16</sub></code>, <code>0F_3A<sub>16</sub></code> prefixes are all encoded in a few bits instead of full bytes.
+Not all <code>VEX</code> instructions work with floating-point registers, some work with general-purpose registers.
+Another thing that differentiates the <code>VEX</code> from legacy SSE instructions is how they treat the <code>ymm</code> and <code>zmm</code> aliases of the <code>xmm</code> registers they work on.
+Legacy SSE leaves the high bits unchanged, while <code>VEX</code> always clears then to 0.
+For some reason, this is related to a heavy performance penalty when switching between legacy and <code>VEX</code>.
+So nowadays you always want to use <code>VEX</code>, even when legacy SSE is a byte shorter.
+        </p>
+        <figure>
+          <pre>
+66 0F 58 CA | addpd xmm1, xmm2
+C5 F1 58 CA | vaddpd xmm1, xmm1, xmm2
+
+   0F 58 CA | addps xmm1, xmm2
+C5 F0 58 CA | vaddps xmm1, xmm1, xmm2
+
+F2 0F 58 CA | addsd xmm1, xmm2
+C5 F3 58 CA | vaddsd xmm1, xmm1, xmm2
+
+F3 0F 58 CA | addss xmm1, xmm2
+C5 F2 58 CA | vaddss xmm1, xmm1, xmm2
+
+C4 E2 E0 F5 CA | bzhi rcx, rdx, rbx
+          </pre>
+        </figure>
+        <p>
+In order to encode the <code>0F<sub>16</sub></code>, <code>0F_38<sub>16</sub></code>, <code>0F_3A<sub>16</sub></code> prefixes, the <code>mmmmm</code> bits in the 3-byte <code>VEX</code> prefix are used.
+I have no idea why they used so many bits, and neither does Intel, because they shortened it to <code>mm</code> in the <code>EVEX</code> prefix.
+The 2-byte <code>VEX</code> prefix doesn't have this field and always defaults to <code>0F<sub>16</sub></code>.
+        </p>
+        <figure>
+          <pre>
+66 0F 38 DE CA    | aesdec xmm1, xmm2
+C4 E2 71 DE CA    | vaesdec xmm1, xmm1, xmm2
+62 F2 75 08 DE CA | {evex} vaesdec xmm1, xmm1, xmm2
+          </pre>
+        </figure>
+        <p>
+The <code>VEX</code> encoding adds a third operand, which allows for operations where two operands are read and another one is written.
+Legacy operations always used one  operand both for reading and writing, destroying one input in the process.
+The new operand is encoded with the <code>vvvv</code> bits which allows to address 16 registers out of the box.
+        </p>
+        <figure>
+          <pre>
+C5 F0 58 CA | vaddps xmm1, xmm1, xmm2
+C5 E0 58 CA | vaddps xmm1, xmm3, xmm2
+C5 B0 58 CA | vaddps xmm1, xmm9, xmm2
+          </pre>
+        </figure>
+        <p>
+Another feature introduced with <code>VEX</code> were the 256-bit registers <code>ymm0</code> - <code>ymm15</code>.
+To indicate that an instruction wants to use those, the <code>L</code> bit is used.
+Then <code>EVEX</code> came along and added 512-bit registers, adding the need for two <code>LL</code> bits.
+There are more features in <code>EVEX</code> using these bits which will be mentioned later on.
+        </p>
+        <figure>
+          <pre>
+C5 F0 58 CA | vaddps xmm1, xmm1, xmm2
+C5 F4 58 CA | vaddps ymm1, ymm1, ymm2
+
+62 F1 74 08 58 CA | {evex} vaddps xmm1, xmm1, xmm2
+62 F1 74 28 58 CA | {evex} vaddps ymm1, ymm1, ymm2
+62 F1 74 48 58 CA | {evex} vaddps zmm1, zmm1, zmm2
+          </pre>
+        </figure>
+        <p>
+To encode the <code>66<sub>16</sub></code>, <code>F2<sub>16</sub></code>, <code>F3<sub>16</sub></code> prefixes, the <code>pp</code> bits are used.
+The use of those prefixes in front of the <code>VEX</code>, <code>XOP</code> and <code>EVEX</code> prefix is not permitted.
+        </p>
+        <figure>
+          <pre>
+C5 F1 58 CA | vaddpd xmm1, xmm1, xmm2
+C5 F0 58 CA | vaddps xmm1, xmm1, xmm2
+C5 F3 58 CA | vaddsd xmm1, xmm1, xmm2
+C5 F2 58 CA | vaddss xmm1, xmm1, xmm2
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>XOP</h3>
+        <figure>
+          <pre>
+ 8Fh  XOP Prefix, same structure as 3-byte VEX
+╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
+┤ 1 │ 0 │ 0 │ 0 │ 1 │ 1 │ 1 │ 1 ├───┤ R │ X │ B │       mmmmm       ├───┤ W │     vvvv      │ L │  pp   ├
+╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
+          </pre>
+        </figure>
+        <p>
+<code>XOP</code> is an extension to the instruction set by AMD.
+Intel doesn't seem to offer any support for these instructions.
+The encoding is almost the same as the 3-byte <code>VEX</code> encoding, except for the first byte and the allowed values for the <code>mmmmm</code> bits.
+Both vector and general-purpose instructions are part of this extension.
+        </p>
+        <figure>
+          <pre>
+8F E9 70 02 F2 | blci ecx, edx
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>EVEX</h3>
+        <figure>
+          <pre>
+ 62h  EVEX Prefix
+╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
+┤ 0 │ 1 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 ├───┤ R │ X │ B │ R'│ 0 │ 0 │  mm   ├───┤ W │     vvvv      │ 1 │  pp   ├───┤ z │   LL  │ b │ V'│    aaa    ├
+╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
+          </pre>
+        </figure>
+        <p>
+<code>EVEX</code> is an extension with its own new encoding scheme, first supported by Intel (and then kinda dropped), but also adopted by AMD.
+It adds 512-bit registers and doubles the number of addressable registers to 32.
+Each operation can name a mask register <code>k0</code> - <code>k7</code> to only modify certain lanes of the destination operand.
+Additional features are embedded rounding control for float operations and embedded broadcasting from one memory location to all register lanes on all operations that load from memory.
+        </p>
+        <figure>
+          <pre>
+62 A1 74 00 58 C2 | vaddps xmm16, xmm17, xmm18
+62 A1 74 40 58 C2 | vaddps zmm16, zmm17, zmm18
+62 F1 6C 38 58 CB | vaddps zmm1, zmm2, zmm3, {rd-sae}
+62 F1 6C 18 58 0B | vaddps xmm1, xmm2, [rbx]{1to4}
+62 F1 6C 49 58 CB | vaddps zmm1 {k1}, zmm2, zmm3
+          </pre>
+        </figure>
+        <p>
+To encode up to 32 operands, two new bits are added: <code>R'</code> for <code>reg</code> and <code>V'</code> for <code>vvvv</code>.
+Additionally, the <code>X</code> bit is now used as the fifth bit for <code>ModRM.r/m</code> when no <code>SIB</code> byte is present.
+The encoding gets away with one less extra bit, because only the vector registers are extended to 32, while the general purpose registers remain at 16.
+        </p>
+        <figure>
+          <pre>
+62 F1 6C 08 58 CB | {evex} vaddps xmm1, xmm2, xmm3
+62 A1 74 00 58 C2 | {evex} vaddps xmm16, xmm17, xmm18
+          </pre>
+        </figure>
+        <p>
+When using a mask, the <code>z</code> bit is used to select what to do with the masked-off lanes: set them to 0 or leave then untouched.
+        </p>
+        <figure>
+          <pre>
+62 F1 6C 49 58 CB | vaddps zmm1 {k1}, zmm2, zmm3
+62 F1 6C C9 58 CB | vaddps zmm1 {k1}{z}, zmm2, zmm3
+          </pre>
+        </figure>
+        <p>
+The <code>b</code> bit serves multiple purposes depending on the context.
+If the operation has a memory operand, settings this bit enables broadcasting, which will load either 4 or 8 byte from memory and copy it to all 2, 4, 8, or 16 lanes of the operand.
+The number of lanes to copy to is controlled by the <code>LL</code> bits.
+        </p>
+        <p>
+If the operation is purely between registers, settings the bit silences arithmetic exceptions (SAE).
+On operations that support it, the <code>LL</code> bits can be used to set the rounding mode to round up, down, to even or to zero when <code>b</code> is set.
+        </p>
+        <figure>
+          <pre>
+62 F1 ED 18 58 0B | vaddpd xmm1, xmm2, [rbx]{1to2}
+62 F1 6C 18 58 0B | vaddps xmm1, xmm2, [rbx]{1to4}
+
+62 F1 ED 38 58 0B | vaddpd ymm1, ymm2, [rbx]{1to4}
+62 F1 6C 38 58 0B | vaddps ymm1, ymm2, [rbx]{1to8}
+
+62 F1 ED 58 58 0B | vaddpd zmm1, zmm2, [rbx]{1to8}
+62 F1 6C 58 58 0B | vaddps zmm1, zmm2, [rbx]{1to16}
+
+62 F1 6C 38 58 CB | vaddps zmm1, zmm2, zmm3, {rd-sae}
+          </pre>
+        </figure>
+        <p>
+To add masking to every operation, the <code>EVEX</code> prefix adds the <code>aaa</code> bits to encode the mask registers <code>k0</code> - <code>k7</code>.
+Mask <code>k0</code> is special, as it can't be modified and is always 0, enabling all lanes.
+        </p>
+        <figure>
+          <pre>
+62 F1 6C 48 58 CB | vaddps zmm1, zmm2, zmm3
+62 F1 6C 48 58 CB | vaddps zmm1 {k0}, zmm2, zmm3 // some assemblers don't allow explicitly naming k0
+62 F1 6C 49 58 CB | vaddps zmm1 {k1}, zmm2, zmm3
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>Opcodes</h3>
+        <p>
+All this prefix stuff so far only applies to some instructions, there are also many of them that start directly with just their opcode.
+But when prefixes are used, the same opcode can take on different meanings, which is indicated by the <i>opcode maps</i> in the graph.
+Without any escapes (<code>0F<sub>16</sub></code>, <code>0F_38<sub>16</sub></code>, <code>0F_3A<sub>16</sub></code>) opcodes are always one byte long.
+But there are two ways to make them 3 bits longer or shorter.
+Some opcodes dedicate their last 3 bits to encoding a register, removing the need for a ModRM byte.
+Other instructions go the other way and steal the <code>ModRM.reg</code> bits to add 3 more bits to the opcode.
+Which length (5-bit, 8-bit, 11-bit) an opcode has depends on the opcode itself.
+        </p>
+        <figure>
+          <pre>
+b9 34 12 00 00    | mov ecx, 0x1234
+41 b9 34 12 00 00 | mov r9d, 0x1234
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>ModRM</h3>
+        <figure>
+          <pre>
+ ModRM
+╭───┬───┬───┬───┬───┬───┬───┬───╮
+┤  Mod  │    Reg    │    R/M    ├
+╰───┴───┴───┴───┴───┴───┴───┴───╯
+          </pre>
+        </figure>
+        <p>
+The <code>ModRM</code> byte encodes one or two operands of the instruction.
+The first two bits are the <code>mod</code> which controls whether the last three bits name a register or memory operand, as well as the number of displacement bytes in case of a memory operand.
+The three bits in the middle are the <code>reg</code> field which either names a register operand or is used as an extension to the opcode.
+        </p>
+        <figure>
+          <pre>
+03 CA             | add ecx, edx
+03 0A             | add ecx, [rdx]
+03 4A 12          | add ecx, [rdx+0x12]
+03 8A 56 34 12 00 | add ecx, [rdx+0x123456]
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>SIB</h3>
+        <figure>
+          <pre>
+ ModRM                               SIB
+╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
+┤  Mod  │    Reg    │ 1 │ 0 │ 0 ├───┤ Scale │   Index   │   Base    ├
+╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
+          </pre>
+        </figure>
+        <p>
+The <code>SIB</code> byte is an optional extension to the <code>ModRM</code> byte, which has additional information about memory operands.
+<code>ModRM</code> alone can only name a base register and a displacement, while <code>SIB</code> can supply a scale and an index register.
+The first two bits are the scale, encoded as <code>2^n</code>, which the index is multiplied by.
+The next three bits are the index, which can get additional bits from the <code>REX</code>, <code>VEX</code>, ... prefixes.
+The final three bits are the base, which no loger resides in the <code>ModRM</code>, because there the base field contains a special value (4) that indicates the presence of the <code>SIB</code> byte.
+This also means that you'll need the <code>SIB</code> byte if you want to use register 4 (<code>esp</code>, <code>xmm4</code>, ...), 12 (<code>r12</code>, ...), 20 or 28.
+        </p>
+        <figure>
+          <pre>
+03 0C 1A | add ecx, [rdx+rbx*1]
+03 0C 5A | add ecx, [rdx+rbx*2]
+03 0C 9A | add ecx, [rdx+rbx*4]
+03 0C DA | add ecx, [rdx+rbx*8]
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>Displacement</h3>
+        <p>
+Displacement bytes may appear in instructions with memory operands, where they are simply added to the address before loading the value from there.
+The presence of displacement bytes is usually indicated by the <code>ModRM</code> byte and limited to a length of 1 or 4.
+A special case of <code>mov</code> instruction is followed by a 64-bit displacement without any <code>ModRM</code> and <code>SIB</code> byte.
+So it is really more of a absolute memory address than a displacement.
+Oh and <code>EVEX</code> instructions that have a single byte of displacement use a <i>compressed displacement</i> scheme, where the real displacement is the encoded one multiplied by some factor that depends on the instruction.
+        </p>
+        <figure>
+          <pre>
+A1 EF CD AB 98 76 54 32 10 | mov eax, [0x0123456789ABCDEF]
+
+62 F1 6C 48 58 8A FF 0F 00 00 | vaddps zmm1, zmm2, [rdx + 4095]
+62 F1 6C 48 58 4A 40          | vaddps zmm1, zmm2, [rdx + 4096]
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>Immediate</h3>
+        <p>
+Some instructions take additional information via an immediate which is 1, 2 or 4 bytes long, depending on the instruction.
+A special case is again the <code>mov</code> instruction which has a variant that allows for an 8-byte immediate value.
+Some instructions encode a fourth operand in the upper 4 bit of the immediate.
+        </p>
+        <figure>
+          <pre>
+   04 01          | add al, 0x01
+66 05 23 01       | add ax, 0x0123
+   05 67 45 23 01 | add eax, 0x01234567
+48 05 67 45 23 01 | add rax, 0x01234567
+
+48 B8 EF CD AB 89 67 45 23 01 | mov rax, 0123456789ABCDEF
+
+C4 E3 <abbr title="nice">69</abbr> 4A CB 40 | vblendvps xmm1, xmm2, xmm3, xmm4
+          </pre>
+        </figure>
+      </section>
+      <section>
+        <h3>(dis)honorable mentions</h3>
+        <p>
+As a closer, here are some oddball instructions that don't follow the otherwise quite structured encoding rules.
+First there is the <code>enter</code> instruction that could do in one instruction what every function prolog does in three separate instructions, but is a lot slower.
+The reason I mention it here though, is because it is the only instruction that has two immediate operands.
+Even worse: their size is 2 and 1 byte each, shattering any hope of merging them into one larger immediate.
+        </p>
+        <p>
+The <code>mov</code> instruction was already mentioned above: it is the only one that can contain a 8-byte displacement or immediate value.
+        </p>
+        <p>
+<code>Fclex</code> isn't even a real instruction.
+Instead it is two instructions written one after the other, which the Intel manual didn't communicate very well.
+        </p>
+        <p>
+And finally <code>vpermil2pd</code> and <code>vpermil2ps</code> which are <code>XOP</code> instructions but use the <code>VEX</code> prefix.
+        </p>
+      </section>
+
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2023-01-22 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
