@@ -28,7 +28,7 @@ pre {
 }
 code {
   font: 1.2em monospace;
-  background: rgba(205, 92, 92, 0.1); /* indianred at 10% opacity. IUnfortunately CSS doesn't let you mix names and transparency. */
+  background: rgba(205, 92, 92, 0.1); /* indianred at 10% opacity. Unfortunately CSS doesn't let you mix names and transparency. */
   padding: 0.1em 0.2em;
   border-radius: 0.3em;
 }
