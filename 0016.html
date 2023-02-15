@@ -142,16 +142,25 @@ Since this is also symmetrical around 0, we can use <code>trunc()</code> to impl
 All we have to do is add <code>±0.5</code>, depending on the sign of the input.
 Here's what I came up with:
         </p>
+        <p>
+Update: adding <code>0.5</code> is not quite correct and will result in <code>0.49999997f</code> being rounded to <code>1</code>.
+This is because <code>0.99999997f</code> can't be represented as a float and has to be rounded during the addition.
+That rounding will use the rounding mode set via the float control flags which usually round to nearest even.
+This will turn the result into <code>1.0f</code> before our rounding instruction can even take a loot at it and truncate anything.
+But the fix is quite easy: just add <code>0.49999997f</code> instead.
+That result is now representable as a float as the number before <code>1.0f</code>, so it doesn't get rounded up and can instead be truncated as intended.
+This also doesn't introduce any errors anywhere else, I checked by iterating over every possible float value and comparing to <code>std::round()</code>.
+        </p>
       </section>
 
       <figure>
         <pre>
 C:
-  trunc(x + copysign(0.5, x));
+  trunc(x + copysign(0.49999997f, x));
 
 x86 pseudo-asm:
   vandps   sign,     x,        0x80000000
-  vorps    halfsign, sign,     0.5f
+  vorps    halfsign, sign,     0.49999997f
   vaddss   xplus,    halfsign, x
   vroundss result,   result,   xplus, 3
         </pre>
@@ -234,6 +243,7 @@ And there's also <code>frndint</code>, which does the rounding but keeps the res
       <section>
         <h2>Change-log</h2>
         <ul>
+          <li>2023-02-15 - Fixed incorrect rounding implementation.</li>
           <li>2023-02-15 - Initial post.</li>
         </ul>
       </section>
