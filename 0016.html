@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Rounding in C vs x86 - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article> 
+      <header>
+        <h2>Rounding in C vs x86</h2>
+        <div>First published: <time>2023-02-15</time></div>
+      </header>
+
+      <section>
+        <p>
+Recently I stumbled over a quirk the way different rounding functions and machine instructions work.
+In particular, that the C standard library and the x86 ISA don't always agree and overlap in al (literal) corner cases.
+All I found in a quick internet search was a confused stackoverflow question and not much more, so it's a good excuse to post more Unicode-art!
+        </p>
+        <p>
+Let's start with an explanation of those graphs.
+Figure 0 shows a range that includes 0 and goes up to but excludes 1 and maps all those values to 0.
+The later graphs show <code>x</code> along the horizontal axis and the result of the rounding operation <code>f(x)</code> along the vertical axis.
+        </p>
+      </section>
+
+      <figure>
+        <pre>
+  │·   ·   ·   ·   ·   ·   ·
+ 0┤· · · · · · ├───╴ · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+  └┬───┬───┬───┬───┬───┬───┬
+  -3  -2  -1   0   1   2   3
+        </pre>
+        <figcaption>Figure 0: <code>[0 .. 1)</code></figcaption>
+      </figure>
+
+      <section>
+        <h3>ceil() and floor()</h3>
+        <p>
+Let's start simple, with the <code><a href="https://en.cppreference.com/w/cpp/numeric/math/floor" target="_blank">floor()</a></code> and <code><a href="https://en.cppreference.com/w/cpp/numeric/math/ceil" target="_blank">ceil()</a></code> functions which round towards -∞ and ∞ respectively.
+They always work the same, regardless on which side of 0 they're on.
+All the rounding functions in this post will, when applied to a signed zero, result in a zero with the same sign, which I don't distinguish in the graphs.
+Both these functions directly map to the x86 machinecode, which uses an immediate value to select the rounding mode:
+        </p>
+      </section>
+
+      <figure>
+        <pre>
+   math.h       │   x86 SSE
+────────────────┼────────────────────────
+ ceil(float)    │  roundss xmm1, xmm2, 2
+ ceil(double)   │  roundsd xmm1, xmm2, 2
+ floor(float)   │  roundss xmm1, xmm2, 1
+ floor(double)  │  roundsd xmm1, xmm2, 1
+        </pre>
+      </figure>
+
+      <figure>
+        <pre>
+floor(x)                            ceil(x)
+ 3┤· · · · · · · · · · · · ├         3┤· · · · · · · · · · ╶───┤
+  │·   ·   ·   ·   ·   ·   ·          │·   ·   ·   ·   ·   ·   ·
+ 2┤· · · · · · · · · · ├───╴         2┤· · · · · · · · ╶───┤ · ·
+  │·   ·   ·   ·   ·   ·   ·          │·   ·   ·   ·   ·   ·   ·
+ 1┤· · · · · · · · ├───╴ · ·         1┤· · · · · · ╶───┤ · · · ·
+  │·   ·   ·   ·   ·   ·   ·          │·   ·   ·   ·   ·   ·   ·
+ 0┤· · · · · · ├───╴ · · · ·         0┤· · · · ╶───┤ · · · · · ·
+  │·   ·   ·   ·   ·   ·   ·          │·   ·   ·   ·   ·   ·   ·
+-1┤· · · · ├───╴ · · · · · ·        -1┤· · ╶───┤ · · · · · · · ·
+  │·   ·   ·   ·   ·   ·   ·          │·   ·   ·   ·   ·   ·   ·
+-2┤· · ├───╴ · · · · · · · ·        -2┤╶───┤ · · · · · · · · · ·
+  │·   ·   ·   ·   ·   ·   ·          │·   ·   ·   ·   ·   ·   ·
+-3┤├───╴ · · · · · · · · · ·        -3┤┤ · · · · · · · · · · · ·
+  └┬───┬───┬───┬───┬───┬───┬ x        └┬───┬───┬───┬───┬───┬───┬ x
+  -3  -2  -1   0   1   2   3          -3  -2  -1   0   1   2   3
+        </pre>
+        <figcaption>Figure 1: <code>floor()</code> and <code>ceil()</code>, aka round towards -∞ and ∞.</figcaption>
+      </figure>
+
+      <section>
+        <h3>trunc()</h3>
+        <p>
+Next is <code><a href="https://en.cppreference.com/w/cpp/numeric/math/trunc" target="_blank">trunc()</a></code>, the default rounding behavior when casting from float to int.
+It also maps directly maps to machinecode.
+What may be interesting here, is that it changes which sides are inclusive or exclusive, depending on the sign of the input.
+        </p>
+      </section>
+
+      <figure>
+        <pre>
+   math.h       │   x86 SSE
+────────────────┼────────────────────────
+ trunc(float)   │  roundss xmm1, xmm2, 3
+ trunc(double)  │  roundsd xmm1, xmm2, 3
+        </pre>
+      </figure>
+
+      <figure>
+        <pre>
+trunc(x)
+ 3┤· · · · · · · · · · · · ├
+  │·   ·   ·   ·   ·   ·   ·
+ 2┤· · · · · · · · · · ├───╴
+  │·   ·   ·   ·   ·   ·   ·
+ 1┤· · · · · · · · ├───╴ · ·
+  │·   ·   ·   ·   ·   ·   ·
+ 0┤· · · · ╶───────╴ · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+-1┤· · ╶───┤ · · · · · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+-2┤╶───┤ · · · · · · · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+-3┤┤ · · · · · · · · · · · ·
+  └┬───┬───┬───┬───┬───┬───┬ x
+  -3  -2  -1   0   1   2   3
+        </pre>
+        <figcaption>Figure 2: <code>trunc()</code>, aka round towards 0.</figcaption>
+      </figure>
+
+      <section>
+        <h3>round()</h3>
+        <p>
+Now for the troublemaker: <code><a href="https://en.cppreference.com/w/cpp/numeric/math/round" target="_blank">round()</a></code>.
+On the positive side it does what you expect: everything below <code>x.5</code> rounds down, everything equal and above rounds up.
+I'm not sure what you would expect on the negative side, but what this function does is rounding everything equal or below <code>-x.5</code> down ane everything else up.
+This is not directly mapped to one x86 instruction, which should explain <a href="https://stackoverflow.com/questions/53962727/round-much-slower-than-floor-ceil-int-in-llvm" target="_blank">this question</a>.
+Since this is also symmetrical around 0, we can use <code>trunc()</code> to implement <code>round()</code>.
+All we have to do is add <code>±0.5</code>, depending on the sign of the input.
+Here's what I came up with:
+        </p>
+      </section>
+
+      <figure>
+        <pre>
+C:
+  trunc(x + copysign(0.5, x));
+
+x86 pseudo-asm:
+  vandps   sign,     x,        0x80000000
+  vorps    halfsign, sign,     0.5f
+  vaddss   xplus,    halfsign, x
+  vroundss result,   result,   xplus, 3
+        </pre>
+      </figure>
+
+      <figure>
+        <pre>
+round(x)
+ 3┤· · · · · · · · · · · ├──
+  │·   ·   ·   ·   ·   ·   ·
+ 2┤· · · · · · · · · ├───╴ ·
+  │·   ·   ·   ·   ·   ·   ·
+ 1┤· · · · · · · ├───╴ · · ·
+  │·   ·   ·   ·   ·   ·   ·
+ 0┤· · · · · ╶───╴ · · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+-1┤· · · ╶───┤ · · · · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+-2┤· ╶───┤ · · · · · · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+-3┤──┤ · · · · · · · · · · ·
+  └┬───┬───┬───┬───┬───┬───┬ x
+  -3  -2  -1   0   1   2   3
+        </pre>
+        <figcaption>Figure 3: <code>round()</code>, aka round to nearest, tie away from 0.</figcaption>
+      </figure>
+
+      <section>
+        <h3>rint()</h3>
+        <p>
+And finally <code><a href="https://en.cppreference.com/w/cpp/numeric/math/rint" target="_blank">rint()</a></code>.
+It actually uses the current rounding mode, which can be changed with <code><a href="https://en.cppreference.com/w/cpp/numeric/fenv/feround" target="_blank">fesetround()</a></code>.
+It just so happens that the default is rounding to nearest even, but you can also set it to round like <code>floor()</code>, <code>ceil()</code> and <code>trunc()</code>.
+It again maps to a single instruction, so unless you really care about the behavior at <code>±x.5</code>, consider using this function instead of <code>round()</code>.
+        </p>
+      </section>
+
+      <figure>
+        <pre>
+   math.h       │   x86 SSE
+────────────────┼────────────────────────
+ rint(float)    │  roundss xmm1, xmm2, 4
+ rint(double)   │  roundsd xmm1, xmm2, 4
+        </pre>
+      </figure>
+
+      <figure>
+        <pre>
+rint(x)
+ 3┤· · · · · · · · · · · ╶──
+  │·   ·   ·   ·   ·   ·   ·
+ 2┤· · · · · · · · · ├───┤ ·
+  │·   ·   ·   ·   ·   ·   ·
+ 1┤· · · · · · · ╶───╴ · · ·
+  │·   ·   ·   ·   ·   ·   ·
+ 0┤· · · · · ├───┤ · · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+-1┤· · · ╶───╴ · · · · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+-2┤· ├───┤ · · · · · · · · ·
+  │·   ·   ·   ·   ·   ·   ·
+-3┤──╴ · · · · · · · · · · ·
+  └┬───┬───┬───┬───┬───┬───┬ x
+  -3  -2  -1   0   1   2   3
+        </pre>
+        <figcaption>Figure 4: <code>rint()</code>, aka by default round to nearest even.</figcaption>
+      </figure>
+
+      <section>
+        <h3>x87</h3>
+        <p>
+Out of morbid curiosity, I also checked, how rounding was handled in the dark ages before SSE and AVX.
+What I found was the <code>fist</code> instruction that converts the top of the fpu register stack to an integer and writes it to memory.
+It's rounding behavior is controlled via flags, just like <code>rint()</code> with the same 4 options as above.
+There's also <code>fisttp</code> which always truncates and ignores the flags.
+And there's also <code>frndint</code>, which does the rounding but keeps the result in an FPU register and has a less funny name.
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2023-02-15 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
