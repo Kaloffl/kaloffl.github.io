@@ -51,7 +51,7 @@ The later graphs show <code>x</code> along the horizontal axis and the result of
       <section>
         <h3>ceil() and floor()</h3>
         <p>
-Let's start simple, with the <code><a href="https://en.cppreference.com/w/cpp/numeric/math/floor" target="_blank">floor()</a></code> and <code><a href="https://en.cppreference.com/w/cpp/numeric/math/ceil" target="_blank">ceil()</a></code> functions which round towards -∞ and ∞ respectively.
+Let's start simple, with the <code><a href="https://en.cppreference.com/w/cpp/numeric/math/floor" target="_blank">floor()</a></code> and <code><a href="https://en.cppreference.com/w/cpp/numeric/math/ceil" target="_blank">ceil()</a></code> functions which round towards <code>-∞</code> and <code>∞</code> respectively.
 They always work the same, regardless on which side of 0 they're on.
 All the rounding functions in this post will, when applied to a signed zero, result in a zero with the same sign, which I don't distinguish in the graphs.
 Both these functions directly map to the x86 machinecode, which uses an immediate value to select the rounding mode:
@@ -146,10 +146,10 @@ Here's what I came up with:
 Update: adding <code>0.5</code> is not quite correct and will result in <code>0.49999997f</code> being rounded to <code>1</code>.
 This is because <code>0.99999997f</code> can't be represented as a float and has to be rounded during the addition.
 That rounding will use the rounding mode set via the float control flags which usually round to nearest even.
-This will turn the result into <code>1.0f</code> before our rounding instruction can even take a loot at it and truncate anything.
+This will turn the result into <code>1.0f</code> before our rounding instruction can even take a look at it and truncate anything.
 But the fix is quite easy: just add <code>0.49999997f</code> instead.
 That result is now representable as a float as the number before <code>1.0f</code>, so it doesn't get rounded up and can instead be truncated as intended.
-This also doesn't introduce any errors anywhere else, I checked by iterating over every possible float value and comparing to <code>std::round()</code>.
+This also doesn't introduce any errors anywhere else, I checked by iterating over every possible float value and comparing to <code>round()</code>.
         </p>
       </section>
 

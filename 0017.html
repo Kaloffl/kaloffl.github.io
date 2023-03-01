@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>A neat trick to put more than 64 bits into your double constant - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article> 
+      <header>
+        <h2>120 bits constants with 64-bit floats</h2>
+        <div>First published: <time>2023-03-01</time></div>
+      </header>
+
+      <section>
+        <p>
+While looking for ways to implement <code>asin</code> from scratch, I came across a few answers by <a href="https://stackoverflow.com/users/780717/njuffa" target="_blank">Norbert Juffa</a> on stackoverflow.
+In <a href="https://stackoverflow.com/questions/28969184/is-there-an-accurate-approximation-of-the-acos-function/42683455#42683455" target="_blank">one of them</a> we find this curiosity:
+        </p>
+        <figure>
+          <pre>
+/* arccos(x) = pi/2 - arcsin(x) */
+r = fma (9.3282184640716537e-1, 1.6839188885261840e+0, asin_core (r));
+          </pre>
+        </figure>
+        <p>
+While the comment talks about dividing π by 2 and subtracting from it, the code looks nothing like it, so what's going on?
+        </p>
+        <p>
+First of all, the function <code>fma</code> is a fused-multiply-add, which means that it does <code>fma(a, b, c) = (a*b)+c</code> in one step.
+The reason that this deserves a special function is, that the result ob <code>a*b</code> is not rounded, but added to <code>c</code> in "infinite precision".
+Rounding will only happen after the addition.
+Infinite in this case means 112 bits of mantissa.
+        </p>
+        <p>
+Second, <code>r</code> has been negated previously, so the call to <code>asin_core</code> will return a negative number.
+The comment might have been more accurate as <code>arccos(x) = pi/2 + arcsin(-x)</code>.
+        </p>
+        <p>
+And finally those numbers.
+When multiplying them together, we get <code>1.570796327...</code> which is indeed close to <code>π/2</code>.
+The trick is in the fused-multiply-add: like I said, the result of the multiplication is not rounded, which means that the temporary value can hold more bits of precision than a regular double.
+So if we need up to 112 bits of precision, we can factor this number into two doubles and let <code>fma</code> work its magic.
+        </p>
+        <p>
+However, we can only profit from this trick, if the result after the <code>fma</code> is smaller than the constant, otherwise there is nowhere to put those extra bits and the rounding after the <code>fma-addition</code> will delete them.
+The reason it works if the result is smaller, is because the temporary result of the <code>fma-addition</code> before the rounding will have leading zeros.
+The FPU will shift the result to the left until the highest bit is a 1 (unless we're in the realm of subnormal values) and stuff those bits into the double mantissa.
+During this shifting, those extra bits of precision get moved in from the right.
+        </p>
+        <p>
+Here's my attempt to show the same thing happening with decimal numbers and scientific notation.
+Numbers are limited to 3 digits (except during <code>fma</code>), one before the dot and two after.
+They are rounded as usual: < 0.5 down, ≥ 0.5 up.
+        </p>
+      </section>
+      <figure>
+        <pre>
+Example calculation π/2 - 0.712 ≈ 0.858796327:
+
+Naive:
+1.57*10<sup>0</sup> - 7.12*10<sup>-1</sup>
+≈ 1.57*10<sup>0</sup> - 0.71*10<sup>0</sup>
+≈ 0.86*10<sup>0</sup>
+≈ 8.60*10<sup>-1</sup>
+
+With FMA:
+(5.59*10<sup>-1</sup> * 2.81*10<sup>0</sup>) - 7.12*10<sup>-1</sup>
+≈ 1.57079*10<sup>0</sup> - 0.71200*10<sup>0</sup>
+≈ 0.85879*10<sup>0</sup>
+≈ 8.59*10<sup>-1</sup>
+
+        </pre>
+      </figure>
+      <section>
+        <p>
+The tricky part is to find the two numbers that best approximate your target value.
+For my example I simply iterated over all three-digit numbers, that would take a bit longer for all 72 quadrillion values you can have with a double.
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2023-03-01 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
