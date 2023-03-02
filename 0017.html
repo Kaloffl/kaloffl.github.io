@@ -20,7 +20,7 @@
 
     <article> 
       <header>
-        <h2>120 bits constants with 64-bit floats</h2>
+        <h2>120-bit constants with 64-bit floats</h2>
         <div>First published: <time>2023-03-01</time></div>
       </header>
 
@@ -42,7 +42,7 @@ While the comment talks about dividing π by 2 and subtracting from it, the code
 First of all, the function <code>fma</code> is a fused-multiply-add, which means that it does <code>fma(a, b, c) = (a*b)+c</code> in one step.
 The reason that this deserves a special function is, that the result ob <code>a*b</code> is not rounded, but added to <code>c</code> in "infinite precision".
 Rounding will only happen after the addition.
-Infinite in this case means 112 bits of mantissa.
+Infinite in this case means 112 bits of mantissa to hold the product of the two 56-bit mantissas.
         </p>
         <p>
 Second, <code>r</code> has been negated previously, so the call to <code>asin_core</code> will return a negative number.
@@ -51,8 +51,8 @@ The comment might have been more accurate as <code>arccos(x) = pi/2 + arcsin(-x)
         <p>
 And finally those numbers.
 When multiplying them together, we get <code>1.570796327...</code> which is indeed close to <code>π/2</code>.
-The trick is in the fused-multiply-add: like I said, the result of the multiplication is not rounded, which means that the temporary value can hold more bits of precision than a regular double.
-So if we need up to 112 bits of precision, we can factor this number into two doubles and let <code>fma</code> work its magic.
+The trick is in the fused-multiply-add: like I said, the resulting mantissa of the multiplication is not immediately rounded and stuffed back into 56 bits, which means that this temporary result can hold more bits of precision than a regular double.
+So if we need a number with up to 112 bits of precision, we can factor it into two doubles and let <code>fma</code> work its magic.
         </p>
         <p>
 However, we can only profit from this trick, if the result after the <code>fma</code> is smaller than the constant, otherwise there is nowhere to put those extra bits and the rounding after the <code>fma-addition</code> will delete them.
@@ -68,32 +68,39 @@ They are rounded as usual: < 0.5 down, ≥ 0.5 up.
       </section>
       <figure>
         <pre>
-Example calculation π/2 - 0.712 ≈ 0.858796327:
+Example calculation π/2 - 0.0754 ≈ 1.495396327:
 
 Naive:
-1.57*10<sup>0</sup> - 7.12*10<sup>-1</sup>
-≈ 1.57*10<sup>0</sup> - 0.71*10<sup>0</sup>
-≈ 0.86*10<sup>0</sup>
-≈ 8.60*10<sup>-1</sup>
+1.57*10<sup>0</sup> - 7.45*10<sup>-2</sup>
+≈ 1.57*10<sup>0</sup> - 0.0745*10<sup>0</sup> // after shifting to same exponent
+≈ 1.4946*10<sup>0</sup>            // after subtraction
+≈ 1.49*10<sup>0</sup>              // after rounding and truncation
 
 With FMA:
-(5.59*10<sup>-1</sup> * 2.81*10<sup>0</sup>) - 7.12*10<sup>-1</sup>
-≈ 1.57079*10<sup>0</sup> - 0.71200*10<sup>0</sup>
-≈ 0.85879*10<sup>0</sup>
-≈ 8.59*10<sup>-1</sup>
+(5.59*10<sup>-1</sup> * 2.81*10<sup>0</sup>) - 7.54*10<sup>-2</sup>
+≈ 1.57079*10<sup>0</sup> - 7.54*10<sup>-2</sup>  // after internal multiplication
+≈ 1.57079*10<sup>0</sup> - 0.0754*10<sup>0</sup> // after shifting to same exponent
+≈ 1.49539*10<sup>0</sup>              // after subtraction
+≈ 1.50*10<sup>0</sup>                 // after rounding and truncation
 
         </pre>
       </figure>
       <section>
         <p>
-The tricky part is to find the two numbers that best approximate your target value.
-For my example I simply iterated over all three-digit numbers, that would take a bit longer for all 72 quadrillion values you can have with a double.
+Here we see, that the <code>FMA</code> version correctly rounds up, while die normal solution rounds down (which is correct for <code>1.57</code>, but wrong for <code>π/2</code>).
+It was a bit tricky to construct this example, because in most cases you get correct rounding anyways.
+        </p>
+        <p>
+Another tricky part is to find the two numbers that, when multiplied together, best approximate <code>π/2</code>.
+For my example I simply iterated over all three-digit numbers, trying both equal exponents and slightly different ones.
+That approach would take a bit longer for all 72 quadrillion values you can have with a double.
         </p>
       </section>
 
       <section>
         <h2>Change-log</h2>
         <ul>
+          <li>2023-03-02 - Fixed the title, writing and example.</li>
           <li>2023-03-01 - Initial post.</li>
         </ul>
       </section>
