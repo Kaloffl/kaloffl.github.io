@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
     <link rel="stylesheet" type="text/css" href="style.css">
-    <title>A neat trick to put more than 64 bits into your double constant - Lars' Website</title>
+    <title>117-bit constants with 64-bit floats - Lars' Website</title>
   </head>
 
   <body>
@@ -20,7 +20,7 @@
 
     <article> 
       <header>
-        <h2>120-bit constants with 64-bit floats</h2>
+        <h2>117-bit constants with 64-bit floats</h2>
         <div>First published: <time>2023-03-01</time></div>
       </header>
 
@@ -42,7 +42,7 @@ While the comment talks about dividing π by 2 and subtracting from it, the code
 First of all, the function <code>fma</code> is a fused-multiply-add, which means that it does <code>fma(a, b, c) = (a*b)+c</code> in one step.
 The reason that this deserves a special function is, that the result ob <code>a*b</code> is not rounded, but added to <code>c</code> in "infinite precision".
 Rounding will only happen after the addition.
-Infinite in this case means 112 bits of mantissa to hold the product of the two 56-bit mantissas.
+Infinite in this case means 106 bits of mantissa to hold the product of the two 53-bit mantissas.
         </p>
         <p>
 Second, <code>r</code> has been negated previously, so the call to <code>asin_core</code> will return a negative number.
@@ -52,7 +52,7 @@ The comment might have been more accurate as <code>arccos(x) = pi/2 + arcsin(-x)
 And finally those numbers.
 When multiplying them together, we get <code>1.570796327...</code> which is indeed close to <code>π/2</code>.
 The trick is in the fused-multiply-add: like I said, the resulting mantissa of the multiplication is not immediately rounded and stuffed back into 56 bits, which means that this temporary result can hold more bits of precision than a regular double.
-So if we need a number with up to 112 bits of precision, we can factor it into two doubles and let <code>fma</code> work its magic.
+So if we need a number with up to 106 bits of precision, we can factor it into two doubles and let <code>fma</code> work its magic.
         </p>
         <p>
 However, we can only profit from this trick, if the result after the <code>fma</code> is smaller than the constant, otherwise there is nowhere to put those extra bits and the rounding after the <code>fma-addition</code> will delete them.
