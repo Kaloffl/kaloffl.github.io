@@ -4,7 +4,7 @@
   <title>Lars' Website</title>
   <link rel="alternate" type="text/html" href="https://kaloffl.github.io/"/>
   <link rel="self" type="application/atom+xml" href="https://kaloffl.github.io/feed.xml"/>
-  <updated>2023-03-01T00:00:00Z</updated>
+  <updated>2023-03-03T00:00:00Z</updated>
   <id>urn:uuid:ff735fb1-916e-4407-840b-307e3d55a8c7</id>
 
   <author>
@@ -13,8 +13,16 @@
   </author>
 
   <entry>
+    <title>Disappointingly unfused: the AMD64 dot-product instruction</title>
+    <link href="https://kaloffl.github.io/0018.html"/>
+    <id>urn:uuid:febed685-1cf9-44ea-9b55-3bd6f0d8bc74</id>
+    <updated>2023-03-03T00:00:00Z</updated>
+    <summary>Disappointingly unfused: the AMD64 dot-product instruction</summary>
+  </entry>
+
+  <entry>
     <title>117-bit constants with 64-bit floats</title>
-    <link href="https://kaloffl.github.io/0016.html"/>
+    <link href="https://kaloffl.github.io/0017.html"/>
     <id>urn:uuid:31cc9138-07af-4af4-a17d-cbe9d749fc73</id>
     <updated>2023-03-01T00:00:00Z</updated>
     <summary>117-bit constants with 64-bit floats</summary>

@@ -51,7 +51,7 @@ The comment might have been more accurate as <code>arccos(x) = pi/2 + arcsin(-x)
         <p>
 And finally those numbers.
 When multiplying them together, we get <code>1.570796327...</code> which is indeed close to <code>π/2</code>.
-The trick is in the fused-multiply-add: like I said, the resulting mantissa of the multiplication is not immediately rounded and stuffed back into 56 bits, which means that this temporary result can hold more bits of precision than a regular double.
+The trick is in the fused-multiply-add: like I said, the resulting mantissa of the multiplication is not immediately rounded and stuffed back into 53 bits, which means that this temporary result can hold more bits of precision than a regular double.
 So if we need a number with up to 106 bits of precision, we can factor it into two doubles and let <code>fma</code> work its magic.
         </p>
         <p>
