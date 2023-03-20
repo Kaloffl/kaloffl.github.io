@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Disappointingly unfused: the AMD64 dot-product instruction - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article> 
+      <header>
+        <h2>Disappointingly unfused: the AMD64 dot-product instruction</h2>
+        <div>First published: <time>2023-03-03</time></div>
+      </header>
+
+      <section>
+        <p>
+In the aftermath (heh, math) of the <a href="0017.html" target="_blank">previous post</a> I started wondering if there are more instructions like <code>FMA</code> that I could use to get more precision than with chaining together basic float operations.
+One instruction that caught my attention was the vector dot product <code>dpps</code>.
+It take two vector registers, multiplies them together and horizontally add up the products.
+If all of that would happen with only one rounding at the end, it would be <code>FMA</code> on steroids.
+However, both Intel's instruction set manual as well as a quick websearch remained silent on this matter, so I had to test it myself.
+        </p>
+        <p>
+Unfortunately, that's not how it works and both its performance and accuracy turned out to be disappointingly bad, to the point that you should use <code>FMA</code> instead of this instruction, even for dot products.
+Here's how I came to this conclusion.
+        </p>
+      </section>
+
+      <section>
+        <h3>First test: addition</h3>
+        <p>
+Since the <code>dpps</code> instruction adds four values together, my first thought was to test just the addition of the instruction.
+For this I prepared one vector with my test values and another with just <code>1.0</code>s, so that the multiplication is basically a no-op.
+My strategy was to have one large value and two small values that together would be enough to change the large value's LSB, but not on their own.
+In the test I ran four functions: just a linear sum, a grouped sum, a double-precision version and finally the <code>dpps</code> instruction itself.
+        </p>
+        <figure>
+          <pre>
+struct vec4 {
+  float f[4];
+};
+
+float dpps_lin(vec4 a, vec4 b) {
+  float result;
+  result  = a.f[0] * b.f[0];
+  result += a.f[1] * b.f[1];
+  result += a.f[2] * b.f[2];
+  result += a.f[3] * b.f[3];
+  return result;
+}
+
+float dpps_grp(vec4 a, vec4 b) {
+  float result;
+  result  = a.f[0] * b.f[0] + a.f[1] * b.f[1];
+  result += a.f[2] * b.f[2] + a.f[3] * b.f[3];
+  return result;
+}
+
+float dpps_ref(vec4 a, vec4 b) {
+  double result;
+  result  = double(a.f[0]) * double(b.f[0]) + double(a.f[1]) * double(b.f[1]);
+  result += double(a.f[2]) * double(b.f[2]) + double(a.f[3]) * double(b.f[3]);
+  return float(result);
+}
+
+float dpps_nat(vec4 a, vec4 b) {
+  float result;
+  asm( // very hacky, but did what it's supposed to for the test.
+    "vmovups xmm0, [%1]\n"
+    "vmovups xmm1, [%2]\n"
+    "vdpps %0, xmm0, xmm1, 0xF1\n" : "=x"(result) : "r" (&a), "r" (&b));
+  return result;
+}
+          </pre>
+        </figure>
+        <p>
+After some trial and error, the test values I came up with were <code>1.0f</code>, <code>1.0f/33554432.0f</code>, <code>1.5f/33554432.0f</code> and <code>0.0f</code>.
+I tried all possible orderings of these values, which also revealed the order in which <code>dpps</code> works.
+The correct answer is always <code>1.0000001192</code>, so we can see which function works better or worse with which ordering.
+I don't expect anyone to read all of it, but here's the test result for completeness:
+        </p>
+      </section>
+      <figure>
+        <pre>
+⎧1.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000001192
+⎪0.0000000298⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000447⎭     ⎩1.0000000000⎭   (nat) 1.0000001192
+
+⎧1.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000001192
+⎪0.0000000447⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000298⎭     ⎩1.0000000000⎭   (nat) 1.0000001192
+
+⎧1.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000298⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000447⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧1.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000298⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000447⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧1.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000447⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000298⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧1.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000447⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000298⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪1.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000001192
+⎪0.0000000298⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000447⎭     ⎩1.0000000000⎭   (nat) 1.0000001192
+
+⎧0.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪1.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000001192
+⎪0.0000000447⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000298⎭     ⎩1.0000000000⎭   (nat) 1.0000001192
+
+⎧0.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000298⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪1.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000447⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000001192
+⎪0.0000000298⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000447⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩1.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000447⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪1.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000298⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000001192
+⎪0.0000000447⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000298⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩1.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000298⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪1.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000447⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000298⎫     ⎧1.0000000000⎫   (lin) 1.0000001192
+⎪0.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000447⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩1.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000298⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪1.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000447⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000298⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪1.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000447⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000298⎫     ⎧1.0000000000⎫   (lin) 1.0000001192
+⎪0.0000000447⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000001192
+⎪0.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩1.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000001192
+
+⎧0.0000000298⎫     ⎧1.0000000000⎫   (lin) 1.0000001192
+⎪0.0000000447⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000001192
+⎪1.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000001192
+
+⎧0.0000000447⎫     ⎧1.0000000000⎫   (lin) 1.0000001192
+⎪0.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000298⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩1.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000447⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪0.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪1.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000298⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000447⎫     ⎧1.0000000000⎫   (lin) 1.0000001192
+⎪0.0000000298⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000001192
+⎪0.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩1.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000001192
+
+⎧0.0000000447⎫     ⎧1.0000000000⎫   (lin) 1.0000001192
+⎪0.0000000298⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000001192
+⎪1.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000001192
+
+⎧0.0000000447⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪1.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000000⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000298⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+
+⎧0.0000000447⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
+⎪1.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000000000
+⎪0.0000000298⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
+⎩0.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
+        </pre>
+      </figure>
+      <section>
+        <p>
+We can see that the <code>dpps</code> instruction (nat) always agrees with the grouped one, suggesting that works the same way internally.
+We can also see that it doesn't always agree with the double-precision reference, which means that unfortunately there isn't any additional precision over a normal series of single-precision <code>add</code>s.
+        </p>
+      </section>
+
+      <section>
+        <h3>Second test: multiplication</h3>
+        <p>
+Okay, addition was a bust, but maybe we can still get something out of the multiplication?
+Let's copy <a href="https://marc-b-reynolds.github.io/math/2020/01/09/ConstAddMul.html#multiply-by-a-constant-1-fma--1-product" target="_blank">this example</a> by Marc B. Reynolds where he multiplies a number by <code>π</code> and gets better rounding through <code>FMA</code>.
+But instead of <code>FMA</code>, we use <code>dpps</code>.
+This time we use both vectors, here are the values:
+        </p>
+      </section>
+      <figure>
+        <pre>
+a = {1234567.0f, 1234567.0f,     0.0f, 0.0f},
+b = {3.1415927f, -8.742278e-08f, 0.0f, 0.0f}
+        </pre>
+      </figure>
+      <section>
+        <p>
+We use the very creative value <code>1234567.0f</code>, multiply it separately by the upper and lower bits of <code>π</code>, and then add the two together, hoping for the correct answer <code>3.878506e+06</code>.
+As before, I'm running the four functions, and even tried different permutations, with no interesting differences.
+The result:
+        </p>
+      </section>
+      <figure>
+        <pre>
+⎧1.234567e+06⎫     ⎧ 3.141593e+00⎫   (lin) 3.878507e+06
+⎪1.234567e+06⎪ dot ⎪-8.742278e-08⎪ = (grp) 3.878506e+06
+⎪0.000000e+00⎪     ⎪ 0.000000e+00⎪   (ref) 3.878506e+06
+⎩0.000000e+00⎭     ⎩ 0.000000e+00⎭   (nat) 3.878507e+06
+        </pre>
+      </figure>
+      <section>
+        <p>
+Huh, <code>dpps</code> doesn't get the correct result, that's not too surprising, but the grouped version does, that's odd.
+Let's take a peek at the disassembly.
+        </p>
+      </section>
+      <figure>
+        <pre>
+// dpps_lin
+push            rax
+vmovss          xmm0, dword ptr [rcx]
+vmulss          xmm0, xmm0, dword ptr [rdx]
+vmovss          dword ptr [rsp+0x4], xmm0
+vmovss          xmm1, dword ptr [rcx+0x4]
+vmovss          xmm0, dword ptr [rdx+0x4]
+vmovss          xmm2, dword ptr [rsp+0x4]
+vfmadd213ss     xmm0, xmm1, xmm2
+vmovss          dword ptr [rsp+0x4], xmm0
+vmovss          xmm1, dword ptr [rcx+0x8]
+vmovss          xmm0, dword ptr [rdx+0x8]
+vmovss          xmm2, dword ptr [rsp+0x4]
+vfmadd213ss     xmm0, xmm1, xmm2
+vmovss          dword ptr [rsp+0x4], xmm0
+vmovss          xmm1, dword ptr [rcx+0xc]
+vmovss          xmm0, dword ptr [rdx+0xc]
+vmovss          xmm2, dword ptr [rsp+0x4]
+vfmadd213ss     xmm0, xmm1, xmm2
+vmovss          dword ptr [rsp+0x4], xmm0
+vmovss          xmm0, dword ptr [rsp+0x4]
+pop             rax
+ret             
+
+// dpps_grp
+push            rax
+vmovss          xmm1, dword ptr [rcx]
+vmovss          xmm0, dword ptr [rdx]
+vmovss          xmm2, dword ptr [rcx+0x4]
+vmulss          xmm2, xmm2, dword ptr [rdx+0x4]
+vfmadd213ss     xmm0, xmm1, xmm2
+vmovss          dword ptr [rsp+0x4], xmm0
+vmovss          xmm1, dword ptr [rcx+0x8]
+vmovss          xmm0, dword ptr [rdx+0x8]
+vmovss          xmm2, dword ptr [rcx+0xc]
+vmulss          xmm2, xmm2, dword ptr [rdx+0xc]
+vfmadd213ss     xmm0, xmm1, xmm2
+vaddss          xmm0, xmm0, dword ptr [rsp+0x4]
+vmovss          dword ptr [rsp+0x4], xmm0
+vmovss          xmm0, dword ptr [rsp+0x4]
+pop             rax
+ret             
+
+// dpps_ref
+push            rax
+vmovss          xmm1, dword ptr [rcx]
+vcvtss2sd       xmm1, xmm0, xmm1
+vmovss          xmm2, dword ptr [rdx]
+vcvtss2sd       xmm0, xmm0, xmm2
+vmovss          xmm3, dword ptr [rcx+0x4]
+vcvtss2sd       xmm2, xmm2, xmm3
+vmovss          xmm4, dword ptr [rdx+0x4]
+vcvtss2sd       xmm3, xmm3, xmm4
+vmulsd          xmm2, xmm2, xmm3
+vfmadd213sd     xmm0, xmm1, xmm2
+vmovsd          qword ptr [rsp], xmm0
+vmovss          xmm1, dword ptr [rcx+0x8]
+vcvtss2sd       xmm1, xmm0, xmm1
+vmovss          xmm2, dword ptr [rdx+0x8]
+vcvtss2sd       xmm0, xmm0, xmm2
+vmovss          xmm3, dword ptr [rcx+0xc]
+vcvtss2sd       xmm2, xmm2, xmm3
+vmovss          xmm4, dword ptr [rdx+0xc]
+vcvtss2sd       xmm3, xmm3, xmm4
+vmulsd          xmm2, xmm2, xmm3
+vfmadd213sd     xmm0, xmm1, xmm2
+vaddsd          xmm0, xmm0, qword ptr [rsp]
+vmovsd          qword ptr [rsp], xmm0
+vmovsd          xmm1, qword ptr [rsp]
+vcvtsd2ss       xmm0, xmm0, xmm1
+pop             rax
+ret             
+
+// dpps_nat
+push            rax
+vmovups         xmm0, xmmword ptr [rcx]
+vmovups         xmm1, xmmword ptr [rdx]
+vdpps           xmm0, xmm0, xmm1, 0xf1
+vmovss          dword ptr [rsp+0x4], xmm0
+vmovss          xmm0, dword ptr [rsp+0x4]
+pop             rax
+ret             
+        </pre>
+      </figure>
+      <section>
+        <p>
+Turns out Clang decided to throw in a few <code>FMA</code>s on it's own, even in the debug build.
+        </p>
+      </section>
+
+      <section>
+        <h3>Is it at least faster?</h3>
+        <p>
+Well, timing a single instruction isn't easy, but my attempts at a simple benchmark seem to indicate something between "it's all the same" and "dpps is even slower than doubles".
+But I'm not very confident in those measurements, so I'll leave it at that.
+        </p>
+        <p>
+Looking at what <a href="https://uops.info/html-instr/VDPPS_XMM_XMM_XMM_I8.html" target="_blank">others have measured</a>, we can see that on recent processors both latency and throughput are pretty bad for <code>dpps</code>:
+a new <code>dpps</code> instruction can be issued every 4 cycles, while according to <a href="https://www.agner.org/optimize/instruction_tables.pdf" target="_blank">Agner Fog</a> an Ice Lake CPU can start two <code>FMA</code>s every cycle.
+And the fact that these instructions haven't made the jump to AVX512 might also tell us, that they aren't very high priority.
+Oh well, no new magic instruction, but at least now we know.
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2023-03-03 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
