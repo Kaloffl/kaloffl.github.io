@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Linear distances, quadratic curves and cubic roots - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article> 
+      <header>
+        <h2>Linear distances, quadratic curves and cubic roots</h2>
+        <div>First published: <time>2023-03-21</time></div>
+      </header>
+
+      <section>
+        <p>
+Quadratic Bezier curves are probably the most popular curves in computer graphics.
+You're seeing them right now in the text you're reading, because TrueType fonts use them to describe the shape of the font glyphs.
+Cubic Bezier curves are also popular, but computationally and mathematically more difficult.
+TODO: link curve videos
+        </p>
+        <p>
+The simplest way to draw these curves is to use <a href="https://en.wikipedia.org/wiki/De_Casteljau%27s_algorithm" target="_blank">De Casteljau's algorithm</a>, but it's also not very practical.
+Another option is to turn the curve into a series of sufficiently small triangles and let the GPU render them.
+The option we're looking at in this article is to find a mathematical formula that for any pixel position gives us the distance to the nearest point on the curve.
+It's not the most efficient solution but gives us a lot of flexibility: a pixel shader on the GPU could just evaluate this formula for every pixel in parallel, compare the distance to a threshold that dictates the line thickness and then draw the result.
+On the CPU we could write a tree-like algorithm that can use the distance to quickly discard areas where the curve can't be.
+Distance functions like these are also easily combined with other distance functions by use of the <code>min(a, b)</code> function.
+Check out <a href="https://iquilezles.org/articles/distfunctions2d/" target="_blank">Inigo Quilez</a>' website for many more examples.
+        </p>
+      </section>
+      <section>
+        <h3>The formula</h3>
+        <p>
+Okay, we want the distance from any point towards the nearest point on the curve.
+Finding the distance is pretty easy thanks to Pythagoras, so we only need to care about finding the nearest point.
+Let's call the point for which we want to know this distance <code>p</code> and the nearest point on the parabola <code>n</code>.
+        </p>
+        <p>
+A quadratic Bezier curve is really just a slice of a parabola, so to make things even easier, we can transform both the curve and point so that the parabola is simply <code>y=x<sup>2</sup></code>.
+This formula also shows that we don't even need to find the nearest point, but just the <code>x</code>-position of it, because the <code>y</code> part is easily computed.
+How this transformation is done we'll take a look at later.
+        </p>
+        <p>
+But a Bezier curve is only a slice of a parabola, so if we find the nearest point of a full parabola, the point may be off the end!
+Fear not, we can also compute the smallest and largest allowed value of <code>x</code> and just clamp to that, again, we'll see how to do this later.
+        </p>
+        <p>
+The key insight to find the closest point is to realize, that a line through our point <code>p</code> and the closest point <code>n</code> on the parabola will be normal to the parabola, in other words perpendicular to the tangent at the closest point.
+After <a href="https://www.desmos.com/calculator/q7mhhqvrvt" target="_blank">some finagling with a graphing tool</a>, you'll find the formula for such a line is <code>y = 0.5 - x/(2n<sub>x</sub>) + n<sub>x</sub><sup>2</sup></code> where <code>x</code> and <code>y</code> are defining the line and <code>n<sub>x</sub></code> is the x-position on the parabola we want the normal for.
+        </p>
+        <p>
+But we don't know the value of <code>n<sub>x</sub></code>, if we knew that we would already be done!
+True, but here's something we know: values for <code>x</code> and <code>y</code>.
+Because the line has to go through <code>p</code>, the values <code>p<sub>x</sub></code> and <code>p<sub>y</sub></code> can be inserted into the equation.
+That leaves us with only one unknown variable: <code>n<sub>x</sub></code> for which we have to solve.
+        </p>
+      </section>
+      <figure>
+        <pre>
+  p<sub>y</sub> = 0.5 - p<sub>x</sub>/(2n<sub>x</sub>) + n<sub>x</sub><sup>2</sup>       | * n<sub>x</sub>
+p<sub>y</sub>n<sub>x</sub> = 0.5n<sub>x</sub> - p<sub>x</sub>/2 + n<sub>x</sub><sup>3</sup>         | - p<sub>y</sub>n<sub>x</sub>
+   0 = 0.5n<sub>x</sub> - p<sub>x</sub>/2 + n<sub>x</sub><sup>3</sup> - p<sub>y</sub>n<sub>x</sub>
+     = n<sub>x</sub><sup>3</sup> + (0.5 - p<sub>y</sub>)n<sub>x</sub> - p<sub>x</sub>/2
+        </pre>
+      </figure>
+      <section>
+        <p>
+Oh no, it's a cubic polynomial.
+Well at least we're not dealing with ellipsis, those have quartic polynomial.
+And a way for cubic root-finding was discovered about 500 years ago by Italian mathematicians, together with the beginnings of imaginary numbers, so it must be good.
+        </p>
+        <p>
+First, we have to make the polynomial depressed, which is a weird way of saying that it shouldn't have a quadratic part and the cubic coefficient has to e 1.
+While there is a way to turn any cubic into that shape, we don't have to worry about it, because our polynomial is already depressed.
+Yay.
+That leaves only two numbers to worry about: the linear and scalar coefficients.
+Let's call them <code>l = 0.5-p<sub>y</sub></code> and <code>s = -p<sub>x</sub>/2</code>.
+        </p>
+        <p>
+The next step is to calculate a discriminant value, for which Wikipedia confusingly has multiple definitions.
+Let's go with <code>d = l<sup>3</sup>/27 + s<sup>2</sup>/4</code>.
+If <code>d</code> is negative, there will be three roots, if it's positive, there is one real root, and if it's zero, some of the roots overlap and there are one or two roots.
+        </p>
+        <p>
+For the case of one root Wikipedia gives us this rootful formula: <code>r<sub>0</sub> = ∛(√(d) + s/2) + ∛(√(d) - s/2)</code> which has a nice <a href="https://en.wikipedia.org/wiki/Cubic_equation#Cardano's_method" targetg="_blank">derivation</a>.
+And understanding that derivation turned out quite helpful for solving a problematic case of <i>catastrophic cancellation</i>, which plagues almost all code that employs the <a href="https://en.wikipedia.org/wiki/Quadratic_formula" target="_blank">Quadratic formula</a> for root finding.
+        </p>
+        <p>
+As one does, I was just reading <i>What Every Computer Scientist Should Know About Floating-Point Arithmetic</i> where the Quadratic formula <a href="https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html#700">was used as an example</a> to show how to avoid such cancellation.
+I also found <a href="https://marc-b-reynolds.github.io/math/2020/01/10/Quadratic.html" target="_blank">this blog-post</a> which also suggests the use of <code>fma</code> to calculate the determinant.
+        </p>
+        <p>
+If the discriminant is negative, there will be three roots, corresponding to three possible perpendicular lines through the parabola and <code>p</code>.
+<a href="https://www.shadertoy.com/view/MdXBzB" target="_blank">This demonstration</a> shows, however, that only two of those lines could ever be the closest, so we don't have to compute one of the roots.
+        </p>
+        <p>
+Following a trigonometric solution, the three roots can be computed by:
+        </p>
+        <figure>
+          <pre>
+u = 2√(-l/3)
+r<sub>i</sub> = u*cos((acos(3s/(lu)) - 2πi)/3)
+          </pre>
+        </figure>
+        <p>
+Where <code>i</code> is <code>0</code>, <code>1</code> or <code>2</code> for the three possible roots.
+As mentioned before, we can leave out one which turns out to always be <code>1</code>.
+Now with a way of finding all the roots, we can finally compute the distance.
+In a case with multiple roots, we can simply compute both distances and pick the smaller one.
+In code it might look like this:
+        </p>
+      </section>
+      <figure>
+        <pre>
+float l = 0.5 - p.y;
+float s = -0.5 * p.x;
+
+float e = -(l * l * l / 27.0);
+float discriminant = fma(s, s, -4.0 * e);
+
+if (0.0 <= discriminant)
+{
+  // one root
+  float f = (-s + sign(p.x) * sqrt(discriminant)) * 0.5;
+  float qx = clamp(cbrt(f) + cbrt(e / f), min_x, max_x);
+  return hypot(qx - p.x, qx * qx - p.y) / scale;
+}
+// three roots
+// However, the center one can never be the closest, so we can ignore it.
+float r3p = sqrt(p.y - 0.5) * (2.0 / sqrt(3.0));
+float ac  = acos(3.0 * s / (l * r3p)) / 3.0;
+float qx0 = clamp(r3p * cos(ac                 ), min_x, max_x);
+float qx1 = clamp(r3p * cos(ac - 4.0 * Pi / 3.0), min_x, max_x);
+return min(
+    hypot(qx0 - p.x, qx0 * qx0 - p.y),
+    hypot(qx1 - p.x, qx1 * qx1 - p.y)) / scale;
+        </pre>
+      </figure>
+      <section>
+        <h3>The rest</h3>
+        <p>
+All that's left now is a way of turning three points into a parabola, finding the transformation that turns this parabola into the unit parabola, and finding the lower and upper bound of <code>x</code> on this parabola that correspond with the start and end point of the curve.
+Easy.
+Well, in terms of code it isn't that much, but I have to admit that I wrote this code 5 years ago and it took me a while to figure it out again.
+        </p>
+      </section>
+      <figure>
+        <pre>
+vec2  ny     = normalize(a - 2.0 * b + c);
+vec2  nx     = vec2(ny.y, -ny.x);
+float xa     = dot(a - b, ny) / dot(a - b, nx) / 2.0;
+float xc     = dot(c - b, ny) / dot(c - b, nx) / 2.0;
+float scale  = (xa - xc) / dot(a - c, nx);
+vec2  vertex = a - nx * (xa / scale) - ny * (xa * xa / scale);
+float min_x  = min(xa, xc);
+float max_x  = max(xa, xc);
+
+vec2  p = (g - vertex) * mat2(nx, ny) * scale;
+        </pre>
+      </figure>
+      <section>
+        <p>
+Starting out with <code>ny</code> and <code>nx</code> which are the basis-vectors of the coordinate-system in which our unit-parabola will exist.
+We'll need them to transform any query point <code>g</code> into the point <code>p</code> we talked about previously.
+The formula <code>a - 2.0 * b + c</code> takes <code>a</code>, <code>b</code> and <code>c</code> and computes the direction from <code>b</code> to a fourth point that completes a parallelogram.
+I have no idea why, but the y-axis of the parabola of a quadratic Bezier is always aligned to this direction.
+        </p>
+        <p>
+The values <code>xa</code> and <code>xc</code> are the x-values of the parabola at the locations of the endpoints <code>a</code> and <code>c</code>.
+Together they're used to compute the <code>scale</code> of the parabola by dividing the x-distance on the parabola <code>xa - xc</code> by the distance on screen along the x-axis <code>dot(a - c, nx)</code>.
+The values <code>xa</code> and <code>xc</code> are the bounds of the curve on the parabola, but we need to sort them properly into lower and upper bound for <code>clamp</code> to work, that's what <code>min_x</code> and <code>max_x</code> are for.
+        </p>
+        <p>
+The <code>vertex</code> is then computed by starting at point <code>a</code> and moving <code>-xa</code> units along the x-axis and <code>-xa<sup>2</sup></code> units along the y-axis.
+There are more direct ways to compute the <code>vertex</code> without <code>xa</code> or even <code>nx</code> and <code>ny</code>, but since they are already here, this way is quicker.
+        </p>
+        <p>
+Finally, the transformation of the screen-coordinate <code>g</code> into the unit-parabola coordinate <code>p</code>.
+This is done by moving the vertex to the origin with a subtraction followed by a rotation to align the parabola along the y axis.
+I'm using a matrix made of the basis-vectors for the rotation here because it's shorter, but it's just a few multiplications and additions.
+        </p>
+        <p>
+And that's my slightly convoluted way to compute the distance to a quadratic Bezier curve.
+A lot of the second part might not be necessary and could be inlined into the first by relaxing some of the assumptions about the parabola.
+But I like this division because it allows us to pre-compute everything we can about the curve before doing more efficient distance queries later.
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2023-03-21 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
