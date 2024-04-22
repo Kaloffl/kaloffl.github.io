@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>max(fun) - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>max(fun)</h2>
+        <div>First published: <time>2024-04-22</time></div>
+      </header>
+
+      <section>
+        <p>
+While testing some C++ code on an ARM64 machine, I noticed something strange: even though the platform has an <code>fmax</code> instruction, the <code>std::max()</code> function doesn't use it.
+Instead, a combination of <code>fcmp</code> and <code>fcsel</code> is used, both by GCC and Clang.
+        </p>
+        <p>
+After some digging it turned out, the fault lies, as always, with C++: <code>std::max()</code> is defined to use the <code>&lt;</code> operator and return one of the inputs based on the comparison's result.
+The ARM64 <code>fmax</code> instruction does something more: if any of the two inputs is <code>NaN</code>, the result will also be <code>NaN</code>.
+        </p>
+        <p>
+Note how <code>std::max()</code> will always return the first parameter if either one is <code>NaN</code> and therefore drop the <code>NaN</code> half of the time.
+This has the unfortunate consequence that <code>max(a, b)</code> can differ from <code>max(b, a)</code>.
+        </p>
+        <p>
+The behavior of <code>std::max()</code> is consistent with the <code>maxss</code> instruction from x86, so why would the ARM64 instruction deviate from this?
+The answer probably is the <a href="https://en.wikipedia.org/wiki/IEEE_754" target="_blank">IEEE 754</a> standard, which not only defines the format for floating-point values, but also a bunch of operations for them.
+In chapter 9.6 these two operations are recommended:
+        </p>
+        <figure>
+          <pre>
+<b>maximum</b>(x, y) is x if x &gt; y, y if y &gt; x, and a quiet NaN if either operand is a NaN, according to 6.2.
+For this operation, +0 compares greater than −0. Otherwise (i.e., when x = y and signs are the
+same) it is either x or y.<br>
+<b>maximumNumber</b>(x, y) is x if x &gt; y, y if y &gt; x, and the number if one operand is a number and the
+other is a NaN. For this operation, +0 compares greater than −0. If x = y and signs are the same it
+is either x or y. If both operands are NaNs, a quiet NaN is returned, according to 6.2. If either
+operand is a signaling NaN, an invalid operation exception is signaled, but unless both operands
+are NaNs, the signaling NaN is otherwise ignored and not converted to a quiet NaN as stated in
+6.2 for other operations.
+          </pre>
+        </figure>
+        <p>
+So it turns out, that <code>fmax</code> implements the <code>maximum</code> operation, while <code>std::max()</code> and <code>maxss</code> don't follow the standard's recommendation.
+        </p>
+        <p>
+And what's up with that other operation, <code>maximumNumber</code>?
+Well, ARM64 has an instruction for that as well: <code>fmaxnm</code>.
+And x86?
+Nope, but here's a fun-fact instead: x87 had no min/max at all.
+        </p>
+        <p>
+But C++ has a surprise for us: <code>std::fmax</code> also behaves like <code>maximumNumber</code>, treating <code>NaN</code> as a missing value and always trying to return a number.
+        </p>
+        <p>
+Let's summarize all of this in a neat little table and also add <code>min</code>:
+        </p>
+        <figure>
+          <pre>
+┌───────────────┬────────┬──────────┬──────────┬────────────┐
+│ Operation     │ (0, 0) │ (0, NaN) │ (NaN, 0) │ (NaN, NaN) │
+├───────────────┼────────┼──────────┼──────────┼────────────┤
+│ std::min      │ 0      │ 0        │ NaN      │ NaN        │
+│ std::fmin     │ 0      │ 0        │ 0        │ NaN        │
+│ x86 minss     │ 0      │ 0        │ NaN      │ NaN        │
+│ ARM64 fmin    │ 0      │ NaN      │ NaN      │ NaN        │
+│ ARM64 fminnm  │ 0      │ 0        │ 0        │ NaN        │
+│ minimum       │ 0      │ NaN      │ NaN      │ NaN        │
+│ minimumNumber │ 0      │ 0        │ 0        │ NaN        │
+├───────────────┼────────┼──────────┼──────────┼────────────┤
+│ std::max      │ 0      │ 0        │ NaN      │ NaN        │
+│ std::fmax     │ 0      │ 0        │ 0        │ NaN        │
+│ x86 maxss     │ 0      │ 0        │ NaN      │ NaN        │
+│ ARM64 fmax    │ 0      │ NaN      │ NaN      │ NaN        │
+│ ARM64 fmaxnm  │ 0      │ 0        │ 0        │ NaN        │
+│ maximum       │ 0      │ NaN      │ NaN      │ NaN        │
+│ maximumNumber │ 0      │ 0        │ 0        │ NaN        │
+└───────────────┴────────┴──────────┴──────────┴────────────┘
+          </pre>
+        </figure>
+        <p>
+Well, at least they all agree in two of the four columns!
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2024-04-22 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>

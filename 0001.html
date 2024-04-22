@@ -26,7 +26,7 @@
 
       <section>
         <p>
-Let's start this blog with a discussion (or monologue) about a one-liner I've recently written: a function that turns a 32-bit integer into a floating-point value in the range [0 .. 1).
+Let's start this blog with a discussion (or monologue) about a one-liner I've recently written: a function that turns a 32-bit integer into a floating-point value in the range <code>[0 .. 1)</code>.
 "What's so special about that?", you might ask, "just cast the integer to a float and divide by the maximum value of the integer!"
 Well, it turns out the be not so simple, and there a few subtleties to consider.
         </p>
@@ -35,13 +35,13 @@ Well, it turns out the be not so simple, and there a few subtleties to consider.
       <section>
         <h3>Exclude 1.0f</h3>
         <p>
-As far as I can tell, the norm for random floats is to exclude the value 1.0 and only to go until the next smallest float value: ~0.9999999404 (= 2<sup>-1</sup> * (2 - 2<sup>-24</sup>)).
+As far as I can tell, the norm for random floats is to exclude the value 1.0 and only to go until the next smallest float value: <code>~0.9999999404 (= 2<sup>-1</sup> * (2 - 2<sup>-24</sup>))</code>.
 This is useful, for example if you want to pick a random item from an array: multiply the random float by the array length and round down.
 This always gives you an index inside of the array bounds.
 And as long as the array length doesn't exceed a value of 2<sup>24</sup> (= 16,777,216), this will cover every possible index, after that, the precision of a float is not enough and it will only cover every second, fourth, ... index.
         </p>
         <p>
-So if we have 32 random bits, which interpreted as an integer can represent values up to FFFFFFFF<sub>hex</sub> (= 4,294,967,295<sub>dec</sub> = 2<sup>32</sup> - 1), then let's increase that number by one and divide by that!
+So if we have 32 random bits, which interpreted as an integer can represent values up to <code>FFFFFFFF<sub>hex</sub> (= 4,294,967,295<sub>dec</sub> = 2<sup>32</sup> - 1)</code>, then let's increase that number by one and divide by that!
 But here is where we run into trouble: a float has only 24 bits of precision, which means that we can't address every integer larger than 2<sup>24</sup>.
 At that number, floats can only represent every second integer, until 2<sup>25</sup> (= 33,554,432) where only every fourth integer is representable, etc.
 However, floats can precisely represent every power of two up to 2<sup>126</sup>, so dividing by 2<sup>32</sup> would be possible, only the number we want to divide can't be represented exactly in most cases.
@@ -52,8 +52,8 @@ In particular, this means that every integer at or above 4,294,967,168 will be r
 When generating random integers, they usually come from ranges that are a power of two in size: a random 32-bit integer, or even a single random bit.
 In order to not introduce any bias in the output, our mapping to floats should target a set of floats with the size being a smaller or equal power of two.
 Otherwise, as stated by the pigeonhole principle, the input values are not cleanly sorted into the output "buckets" and some outputs will be more common than others.
-Fortunately, the float range [0 .. 1) contains a number of floats that is a power of two.
-Unfortunately, the float range [0 .. 1] does not, it is one larger, obviously.
+Fortunately, the float range <code>[0 .. 1)</code> contains a number of floats that is a power of two.
+Unfortunately, the float range <code>[0 .. 1]</code> does not, it is one larger, obviously.
 It should be noted though, that this bias is really tiny, we're talking about 2<sup>-24</sup> after all.
         </p>
       </section>
@@ -156,11 +156,11 @@ Here is a (simplified) view of the distribution of possible random values with r
         </figure>
         <p>
 This "chart" is an exaggerated view of how floats work and how the random numbers will distributed.
-Each 'o' represents a possible random number ('8' are two in the same place), the lines show the resolution of this low-res float at that scale.
+Each <code>o</code> represents a possible random number (<code>8</code> are two in the same place), the lines show the resolution of this low-res float at that scale.
 As can be seen: we have the same density of values.
-In the range [1/16 .. 2/16) we count 4 values and in the range [8/16 .. 9/16) we also count 4 values.
+In the range <code>[1/16 .. 2/16)</code> we count 4 values and in the range <code>[8/16 .. 9/16)</code> we also count 4 values.
 The only difference: the values in the higher range fall on the same value, while they are more spread out in the lower range.
-Another thing to note is, that not every value in the [1/16 .. 1/8) range is used.
+Another thing to note is, that not every value in the <code>[1/16 .. 1/8)</code> range is used.
 This is in line with what we see in the first table: the float resolution is finer than 2<sup>-32</sup>.
         </p>
       </section>
@@ -170,7 +170,7 @@ This is in line with what we see in the first table: the float resolution is fin
         <p>
 While I have no strong argument against the above distribution, I'd prefer it if all possible values were spaced evenly.
 That way it is much clearer how many distinct values are possible, and we have no different behavior when working at the top or the bottom of the range.
-This is how it would look like, if we spread the possible values evenly, which we can get by only taking the integers in the range [0 .. 16,777,216):
+This is how it would look like, if we spread the possible values evenly, which we can get by only taking the integers in the range <code>[0 .. 16,777,216)</code>:
         </p>
         <figure id="figure1">
           <pre>
@@ -183,7 +183,7 @@ This is how it would look like, if we spread the possible values evenly, which w
 Here we start skipping possible float values immediately as the value goes below 0.5, by always taking the coarsest step in our range: 2<sup>-24</sup>.
 This way we only use 24 bits of our 32-bit integer, leaving 8 bits to do whatever: masking off and dropping, xoring into the 24 bits, saving for later, ...
 I'd argue, that this is the better scheme, as we have no surprising resolution changes.
-Here's table 1 for the 24-bit scheme:
+Here's table 0 for the 24-bit scheme:
         </p>
         <figure id="table2">
           <pre>
@@ -230,7 +230,7 @@ And to finish it all off, here is the code, in C++:
           <pre>
 float random_float(RandomState& state)
 {
-  return (float)(random_uint32(state) & 0xFFFFFFU) / 16777216.0f;
+  return float(random_uint32(state) & 0xFFFFFFU) / 16777216.0f;
 }
           </pre>
           <figcaption>Listing 0: The final function</figcaption>
