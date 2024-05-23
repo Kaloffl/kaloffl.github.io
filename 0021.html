@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="alternate" type="application/atom+xml"  title="Atom Feed" href="feed.xml">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <title>Hershey's Fonts - Lars' Website</title>
+  </head>
+
+  <body>
+
+    <header>
+      <nav>
+        <h1><a href="index.html">Lars' website</a></h1>
+        <a href="archive.html" title="archive">Archive</a>
+        <a href="feed.xml" title="feed">Feed</a>
+      </nav>
+    </header>
+
+    <article>
+      <header>
+        <h2>Hershey's Fonts</h2>
+        <div>First published: <time>2024-05-23</time></div>
+      </header>
+
+      <section>
+        <p>
+Recently, I wanted to build a little interactive demo for the hybrid-A* algorithm.
+I wanted the user to be able to drag around the start and end points on the grid, and put some text next to the points to show which is which.
+To make it easy to build and run, and also to not distract too much from the algorithm's implementation, I wanted as little code as possible and an executable which didn't depend on any other files to run.
+So I pondered my options...
+        </p>
+        <p>
+The most popular option for drawing text today is to use TrueType or OpenType fonts, which will give you pretty good quality, scalability and lots and lots of typefaces to chose from.
+But the code to render those fonts is either <a href="https://learn.microsoft.com/en-us/windows/win32/gdi/drawing-text" target="_blank">platform-dependent</a>, <a href="https://github.com/nothings/stb/blob/master/stb_truetype.h" target="_blank">lacking in features</a> or <a href="https://github.com/harfbuzz/harfbuzz" target="blank">gigantic</a>.
+        </p>
+        <p>
+If you know all your text up-front, you can just draw it all beforehand and save the rendered text as QOI or BMP images that are then loaded and displayed at runtime.
+This is obviously very inflexible, so you might instead make an image with all the glyphs you need and assemble them into text in the program, creating the least suspicious ransom note ever.
+You'll also need to store the location and size of every glyph in that image somewhere, probably in an additional file.
+But then the glyphs don't even scale nicely because they were captured only at one fixed size.
+        </p>
+        <p>
+The scaling issue can mostly be solved by Signed Distance Fields.
+Instead of just storing each glyph as black and white, you can use shades of gray to encode the distance of each pixel to the outline of the glyph.
+This gives us much better scaling, as Valve showed <a href="https://steamcdn-a.akamaihd.net/apps/valve/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf" target="_blank">back in 2007</a>.
+        </p>
+        <p>
+But all these techniques would've required me to ship one or more additional file or to locate the user's system font directory and to hope the font I want is in there.
+Wouldn't it be nice to just have the most useful glyphs directly in the code in some simple vector format, so they were guaranteed to always be available?
+Well, let me introduce you to the work of Dr. A. V. Hershey.
+        </p>
+        <p>
+The terminally hasty, to <a href="https://www.circuitousroot.com/oldstuff/hershey/varkon-fonts/vkf-hershey-greek/index.html" target="_blank">borrow a phrase</a>, may skip to <a href="#implementation">Implementation</a> for the technical details.
+        </p>
+      </section>
+
+      <section id="histories">
+        <h3>Decades of history</h3>
+        <p>
+There are already a few articles out there that go over the history, the most comprehensive being on <a href="https://www.circuitousroot.com/oldstuff/hershey/" target="_blank">circuitousroot.com</a> and <a href="https://hackaday.com/2021/03/30/hershey-fonts-not-chocolate-the-origin-of-vector-lettering/" target="_blank">hackaday.com</a>.
+My own recap here will focus on the font data and how it survived over 57 years and is still used today.
+        </p>
+        <p>
+We begin our journey with the publication of <a href="https://archive.org/details/DTIC_AD0662398/" target="_blank">CALLIGRAPHY FOR COMPUTERS</a> in 1967 by Dr. Allen Vincent Hershey, while working at the US Naval Weapons Laboratory at Dahlgren.
+There, he had access to one of the most powerful computer of the time, the NORC, and what did he use if for?
+Fonts!
+And physical simulations of surface-waves produced by underwater torpedoes, I guess.
+But also fonts!
+        </p>
+        <p>
+Being a mathematician and unhappy with the current state of computer-based typesetting, he created a large repertoire of over a thousand letters, digits and symbols from different languages and in different styles.
+From Latin over Greek to Cyrillic.
+From typographic over cartographic to musical...ographic?
+From serif over script to blackletter.
+And then there are almost 800 Kanji, Hiragana and Katakana as well.
+        </p>
+        <p>
+All in all an enormously impressive work, both for the sheer diversity and number of glyphs, but also for how good they look, given that they're all made of straight line segments starting and ending on integer coordinates on a 50x50 grid.
+Oh and while most of the glyphs are vector-based, there is also a repertoire for dot-based printers, but nobody ever talks about that one.
+        </p>
+        <p>
+While the report only contained pictures of the printed glyphs, the actual vector data was apparently distributed on magnetic tapes.
+At some point, this data fell into the hands of some national institutions, which began on distributing it.
+        </p>
+        <p>
+For one, the National Bureau of Standards (today NIST) published in 1976 the report <a href="https://ia904509.us.archive.org/1/items/contributiontoco424wolc/contributiontoco424wolc.pdf" target="_blank">A CONTRIBUTION TO COMPUTER TYPESETTING TECHNIQUES: Tables of Coordinates for Hershey's Repertory of Occidental Type Fonts and Graphic Symbols</a> by Norman M. Wolcott and Joseph Hilsenrath.
+This report contains the entire data of the "Occidental" half (Roman, Greek, Cyrillic, ...) in printed text form, as well as descriptions of what the special characters were supposed to represent.
+        </p>
+        <p>
+Additionally, the National Technical Information Service (NTIS, not to be confused with the NIST) began distributing tapes with the font data for a fee.
+        </p>
+        <p>
+Given, that the NIST report only contained half of the data and nobody wanted to type in 68 pages full of numbers by hand, the NTIS is probably the source of every copy of the fonts today.
+        </p>
+        <p>
+A few years later, in 1986, Pete Holzmann <a href="https://www.usenetarchives.com/view.php?id=net.graphics&mid=PDgwQHdhdGNnbC5VVUNQPg" target="_blank">brought up the idea</a> on Usenet, to buy a copy of the data from NTIS, with a license for public redistribution.
+The font itself was already in the public domain, so the license was for using the data in the format the NTIS provided.
+Apparently enough people chipped it, so that the $1600 could be payed and the data was soon <a href="http://cd.textfiles.com/sourcecode/usenet/compsrcs/unix/volume04/hershey/" target="_blank">published</a>.
+In order to compress the data, James Hurt came up with a format that required only two bytes per vertex, instead of the 4 bytes that would be required by the format in the NIST report and that was probably on the tape.
+        </p>
+        <p>
+Here I would like to take a moment to highlight how amazing it is, that these posts are still available on the internet, and how sad it therefore is, that tonnes of equally interesting conversations are now swallowed up by closed services like Discord, and won't not be searchable by people in 50 years.
+&lt;/rant>.
+        </p>
+        <p>
+A few month later, <a href="https://www.usenetarchives.com/view.php?id=net.text&mid=PDE0MUBjcy5xbWMuYWMudWs%2B" target="_blank">a bug report</a> appeared, pointing out a slight error in the data.
+This error was not in the NIST report, and might have been a bit-flip while transferring or converting the data by Holzmann or Hurt.
+        </p>
+        <p>
+A nice side-effect of this error is, that we can look at different distributions of the data and see if the error is there, is fixed, or is fixed incorrectly.
+I do wonder if there are more, less obvious errors in the data that we can look out for.
+        </p>
+        <p>
+In 1990, the German magazine C'T published 'Die "stroked Fonts" in Turbo-Pascal 4/5', which commented on the fact, that Turbo-Pascal used some subset of the Hershey fonts for drawing text in CGA/VGA mode.
+        </p>
+        <p>
+At some point in 2014, the Hershey fonts <a href="https://github.com/opencv/opencv/commits/4.x/modules/imgproc/src/hershey_fonts.cpp" target="_blank">were added</a> to OpenCV, and in 2015, Reinholtz created <a href="https://github.com/reinholtz/hershey-fonts-with-unicode" target="_blank">a repository with Hershey to Unicode mapping</a>.
+        </p>
+        <p>
+Which brings us to today, where I have created <a href="https://github.com/Kaloffl/Hershey-Unicode-Mapping" target="_blank">my own repository</a> with even better Hershey to Unicode mapping, with previews for the <a href="https://kaloffl.github.io/0021/hershey_occidental.html" target="_blank">Occidental</a> and <a href="https://kaloffl.github.io/0021/hershey_oriental.html" target="_blank">Oriental</a> fonts.
+        </p>
+        <p>
+There are a few things that I haven't mentioned, like GNU Plotutils or the inclusion in Inkscape 1.0, but I think this is more than enough if you want to go down this rabbit hole yourself.
+        </p>
+        <p>
+It is also nice to see, that any comment section on popular article about Hershey fonts are full of people reminiscing about their use of these fonts in their own cool projects.
+        </p>
+      </section>
+
+      <section id="implementation">
+        <h3>Implementation</h3>
+        <p>
+Now how can we use these fonts for our own cool projects?
+        </p>
+        <p>
+The first step would be to obtain the font data and selecting the glyphs we want to use.
+For this demonstration, we'll be using the large duplex glyphs from <a href="0021/hershey_occidental.html#2001" target="_blank">2001</a> to <a href="0021/hershey_occidental.html#2001" target="_blank">2932</a>.
+We could leave some glyphs out to save space, for example I don't think we need two sets of musical notation, but I'll leave it as is.
+If space is a concern, you'll also want to chose a range with thinner glyphs.
+        </p>
+        <p>
+Now how do we put the glyphs into our code?
+The easiest way would be to just store the JHF strings and write a function to decode and draw them.
+We can do at least a little better by directly storing signed 8-bit values instead of chars from which we have to subtract 'R' every time.
+It will be a bit bulkier in our sourcecode, but after compilation it will also be 2 bytes per coordinate.
+For now we'll use the same trick as Hershey and Hurt before us and designate some extreme value as "pen up" to signal, that we want to move to the next coordinate without drawing a line.
+        </p>
+        <figure>
+          <pre>
+int8_t points[][2] = {
+    {   0,  -12}, {  -7,    9}, {-128, -128}, {   0,  -12}, {   7,    9}, {-128, -128}, ...
+};
+          </pre>
+        </figure>
+        <p>
+Since the number of lines per glyph varies greatly, we probably want to store all the line data in one large array and have a second datastructure that translates from the Unicode codepoint we want to display to the range of lines we need to draw.
+We can also store the left and right bearing in there, since every glyph has those and their size is fixed to two bytes.
+By storing the index and length of points as 4 and 2 byte integers instead of pointers, we can stuff everything into 12 bytes per glyph.
+        </p>
+        <figure>
+          <pre>
+struct Glyph {
+  char32_t codepoint;
+  uint32_t start;
+  uint16_t length;
+  int8_t   left;
+  int8_t   right;
+};
+
+Glyph glyphs[] = {
+  {'\U00000020', 4688,   0,  8,  8},
+  {'\U00000021', 5099,  14,  5,  5},
+  {'\U00000022', 5149,  11,  8,  8},
+  {'\U00000023', 5991,  11, 10, 11},
+  {'\U00000024', 5950,  41, 10, 10},
+  {'\U00000025', 5816,  31, 12, 12},
+  {'\U00000026', 5847,  48, 12, 13},
+  {'\U00000027', 5144,   5,  4,  4},
+  {'\U00000028', 5183,  19,  7,  7},
+  ...
+};
+          </pre>
+        </figure>
+        <p>
+When drawing text, we want to find the correct glyph for each character as quickly as possible.
+One concession we make here is, that our text is in UTF8, but we need to look up the 32-bit codepoint, so we need a <a href="https://nullprogram.com/blog/2017/10/06/" target="_blank">conversion step</a> here.
+That aside, the fastest way to find the right glyph in the array is probably to use a <a href="https://en.wikipedia.org/wiki/Perfect_hash_function" target="_blank">perfect hash function</a>.
+A slightly less fast way, but with less memory overhead is to sort the array by codepoint and use a binary search.
+For now we'll go with the binary search and I'll hopefully write a follow-up some day where I use perfect hashing.
+        </p>
+        <figure>
+          <pre>
+struct GlyphMatch {
+  int32_t  glyph_index;
+  uint32_t bytes_matched;
+};
+
+GlyphMatch match_next_glyph(const char *text) {
+  int32_t  glyph_index = -1;
+  uint32_t longest_match = 0;
+
+  char32_t cp;
+  uint32_t len = utf8_to_codepoint(text, &cp);
+
+  uint32_t lower = 0;
+  uint32_t upper = uint32_t(sizeof(glyphs)/sizeof(glyphs[0]));
+  while (lower < upper) {
+    uint32_t center = (lower + upper) / 2;
+    if (glyphs[center].codepoint < cp) lower = center + 1;
+    else                               upper = center;
+  }
+
+  if (glyphs[lower].codepoint == cp) {
+    return {lower, len};
+  }
+  return {-1, len};
+}
+          </pre>
+        </figure>
+        <p>
+Not much more to no now than to iterate over the string and drawing some lines.
+We can call out <code>match_next_glyph</code> function to get the glyph index and the number of bytes we can advance the string, then we iterate through the glyphs points and draw lines, with the occasional brake to lift the pen.
+I also added some handling for unknown characters and line breaks.
+        </p>
+        <figure>
+          <pre>
+void draw_text(const char *text, int x, int y) {
+  int cursor_x = x;
+  int cursor_y = y;
+  while (*text) {
+    if ('\n' == *text) {
+      cursor_x = x;
+      cursor_y += 40;
+      text += 1;
+      continue;
+    }
+    GlyphMatch match = match_next_glyph(text);
+    text += match.bytes_matched;
+    if (0 <= match.glyph_index) {
+      Glyph *glyph = &glyphs[uint32_t(match.glyph_index)];
+      cursor_x += glyph->left;
+      int x0, y0;
+      bool up = true;
+      for (int i = glyph->start; i < glyph->start + glyph->length; ++i) {
+        if (-128 == points[i][0] && -128 == points[i][1]) {
+          up = true;
+          continue;
+        }
+        int x1 = points[i][0] + cursor_x;
+        int y1 = points[i][1] + cursor_y;
+        if (!up) draw_line(x0, y0, x1, y1);
+        up = false;
+        x0 = x1;
+        y0 = y1;
+      }
+      cursor_x += glyph->right;
+    } else {
+      cursor_x += 20;
+    }
+  }
+}
+          </pre>
+        </figure>
+        <p>
+For drawing without scaling we can use <a href="https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm" target="_blank">Bresenham's line algorithm</a>, though if you want to scale up the text, you'll need something else to draw thicker lines.
+For for a first test, we're done!
+        </p>
+      </section>
+
+      <section>
+        <h3>Closing thoughts</h3>
+        <p>
+There is still a lot that can be improved about the code I posted here.
+We're not using the biggest strength of the vector data: it's scalability.
+        </p>
+        <p>
+While it's fine with this font, relying on a 1:1 correspondence between codepoints and glyphs isn't ideal, both for combined characters made of multiple codepoints and for ligature support.
+        </p>
+        <p>
+Another thing to look into would be optimization of the line data.
+I definitely saw a few places, where the coordinate before and after lifting the pen was exactly the same and we could save at least 4 bytes!
+"In order to minimize chaos in the sequence of vectors", lines are always drawn left to right and top to bottom.
+One could probably come up with an algorithms to find the smallest number of polylines for each glyph.
+        </p>
+        <p>
+And finally I want remind us all, how amazing it is that these glyphs exist and are still accessible to us today.
+My thanks go out especially to Dr. Hershey himself, as well as Pete Holzmann and the Usenet Font Consortium for paying for and then releasing the data for free on the web.
+        </p>
+      </section>
+
+      <section>
+        <h2>Change-log</h2>
+        <ul>
+          <li>2024-05-23 - Initial post.</li>
+        </ul>
+      </section>
+
+    </article>
+
+    <footer>
+      <a href="changelog.html">Change-log</a>
+    </footer>
+  </body>
+</html>
