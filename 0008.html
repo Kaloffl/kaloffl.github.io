@@ -62,33 +62,31 @@ But it turns out that Windows provides an API for generating UUIDs, so I just us
 And by used I mean I quickly hacked together a tiny program that calls the API and prints the UUID string.
 Here it is:
         </p>
-        <figure>
+        <code>
           <pre>
-#include &lt;cstdio&gt;
-
-struct UUID
-{
-  char whatever[1028];
-};
-
-extern "C" long UuidCreate(UUID *Uuid);
-
-extern "C" long UuidToStringA(const UUID *Uuid, char **StringUuid);
-
-int main()
-{
-  UUID uuid;
-  UuidCreate(&uuid);
-
-  char *str;
-  UuidToStringA(&uuid, &str);
-
-  std::puts(str);
-
-  return 0;
-}
+<span>#include &lt;cstdio&gt;</span>
+<span></span>
+<span>struct UUID {</span>
+<span>  char whatever[1028];</span>
+<span>};</span>
+<span></span>
+<span>extern "C" long UuidCreate(UUID *Uuid);</span>
+<span></span>
+<span>extern "C" long UuidToStringA(const UUID *Uuid, char **StringUuid);</span>
+<span></span>
+<span>int main() {</span>
+<span>  UUID uuid;</span>
+<span>  UuidCreate(&uuid);</span>
+<span></span>
+<span>  char *str;</span>
+<span>  UuidToStringA(&uuid, &str);</span>
+<span></span>
+<span>  std::puts(str);</span>
+<span></span>
+<span>  return 0;</span>
+<span>}</span>
           </pre>
-        </figure>
+        </code>
         <p>
 Yes, I prefer to copy the function declarations over including the windows header file.
         </p>

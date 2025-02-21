@@ -32,12 +32,12 @@ I can stop whenever I want, I promise!
         <p>
 One way to create Quaternions that rotate a vector in a certain plane for a given angle is to use the Quaternion exponential with a "pure Quaternion", aka a Bi-vector multiplied with the angle, like this:
         </p>
-        <figure>
+        <code>
           <pre>
-auto angle = random_f32(-Pi, Pi);
-auto rot   = exp(Quat{0, 1, 0, 0} * angle / 2);
+<span>auto angle = random_f32(-Pi, Pi);</span>
+<span>auto rot   = exp(Quat{0, 1, 0, 0} * angle / 2);</span>
           </pre>
-        </figure>
+        </code>
         <p>
 You also have to divide the angle by 2, because the Quaternion rotation rotates by twice the encoded angle.
         </p>
@@ -46,7 +46,7 @@ As the example shows, the angle is given in radians, in this case rotating somew
 While <code>exp</code> on Complex Numbers is somewhat well known due to <a target="_blank" href="https://en.wikipedia.org/wiki/Euler%27s_identity">Euler's identity</a>, shockingly few implementations of Quaternions I found have definitions for it.
 So let's quickly go over it here:
         </p>
-        <figure>
+        <code>
           <pre>
 Math:
   q = a + b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>
@@ -56,19 +56,19 @@ Math:
           sin(θ) * (b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>)/θ)
 
 Code:
-  Quaternion exp(Quaternion q) {
-    auto e = exp(q.cs);
-    auto theta = sqrt(square(q.c23) + square(q.c31) + square(q.c12));
-    auto s = e * sin(theta) / theta;
-    return {
-      .cs  = e * cos(theta),
-      .c23 = s * q.c23,
-      .c31 = s * q.c31,
-      .c12 = s * q.c12
-    };
-  }
+<span>Quaternion exp(Quaternion q) {</span>
+<span>  auto e = exp(q.cs);</span>
+<span>  auto theta = sqrt(square(q.c23) + square(q.c31) + square(q.c12));</span>
+<span>  auto s = e * sin(theta) / theta;</span>
+<span>  return {</span>
+<span>    .cs  = e * cos(theta),</span>
+<span>    .c23 = s * q.c23,</span>
+<span>    .c31 = s * q.c31,</span>
+<span>    .c12 = s * q.c12</span>
+<span>  };</span>
+<span>}</span>
           </pre>
-        </figure>
+        </code>
         <p>
 While I'm not going to prove this here, you can see that it will work as expected for Real Numbers, where <code>θ</code> is 0, as well as for Complex Numbers, where <code>b</code> and <code>c</code> are 0.
         </p>
@@ -77,11 +77,11 @@ Okay, but the title says that we're not using radians, while the <code>exp</code
 For us to abandon radians, we have to look a little further, at the <code>pow</code> function.
 It is defined like this:
         </p>
-        <figure>
+        <code>
           <pre>
 q<sup>a</sup> = exp(log(q) * a)
           </pre>
-        </figure>
+        </code>
         <p>
 So now we also need the Quaternion logarithm, great.
 But before that, let's think about what we should expect from the <code>pow</code> function.
@@ -92,16 +92,16 @@ And <code>q<sup>0.5</sup></code> should be the same as <code>√q</code> which I
 So we can use the <code>pow</code> function between 0 and 1 to linearly interpolate between a 0° and 180° turn, and of course from 1 to 2 to get the rest of the circle.
 What we won't need anymore is to put <code>π</code> in our calculation, yay!
         </p>
-        <figure>
+        <code>
           <pre>
-auto turn = random_f32(-0.5f, 0.5f);
-auto rot  = pow(Quat{0, 1, 0, 0}, turn);
+<span>auto turn = random_f32(-0.5f, 0.5f);</span>
+<span>auto rot  = pow(Quat{0, 1, 0, 0}, turn);</span>
           </pre>
-        </figure>
+        </code>
         <p>
 But now let's bite the bullet, what's the logarithm of a Quaternion?
         </p>
-        <figure>
+        <code>
           <pre>
 Math:
   q = a + b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>
@@ -111,19 +111,19 @@ Math:
            acos(a / |q|) * (b<b>e<sub>yz</sub></b> + c<b>e<sub>zx</sub></b> + d<b>e<sub>xy</sub></b>)/θ
 
 Code:
-  Quaternion log(Quaternion q) {
-    auto theta = sqrt(square(q.c23) + square(q.c31) + square(q.c12));
-    auto norm = abs(q);
-    auto a = acos(q.cs / norm) / theta;
-    return {
-      .cs  = log(norm),
-      .c23 = a * q.c23,
-      .c31 = a * q.c31,
-      .c12 = a * q.c12
-    };
-  }
+<span>Quaternion log(Quaternion q) {</span>
+<span>  auto theta = sqrt(square(q.c23) + square(q.c31) + square(q.c12));</span>
+<span>  auto norm = abs(q);</span>
+<span>  auto a = acos(q.cs / norm) / theta;</span>
+<span>  return {</span>
+<span>    .cs  = log(norm),</span>
+<span>    .c23 = a * q.c23,</span>
+<span>    .c31 = a * q.c31,</span>
+<span>    .c12 = a * q.c12</span>
+<span>  };</span>
+<span>}</span>
           </pre>
-        </figure>
+        </code>
         <p>
 In both code snippets I've left out handling of zero-divisions, but you can already see, those are some chonkers.
 And we're supposed call both of these functions whenever we want to rotate something?
@@ -134,23 +134,23 @@ While there are already very few Quaternion implementations that have <code>log<
 Only one I found didn't implement <code>pow</code> in by calling <code>exp(log(q)*e)</code> and that one had a bug.
 So here's my hopefully less-buggy version, I don't know it it could be improved further.
         </p>
-        <figure>
+        <code>
           <pre>
-Quaternion pow(Quaternion q, float e) {
-  auto theta_square = square(q.c23) + square(q.c31) + square(q.c12);
-  auto norm = sqrt(square(q.cs) + theta_square);
-  auto p = pow(norm, e);
-  auto a = e * acos(q.cs / norm);
-  auto s = p / sqrt(theta_square) * sin(a);
-  return {
-    .cs  = p * cos(a),
-    .c23 = s * q.c23,
-    .c31 = s * q.c31,
-    .c12 = s * q.c12
-  };
-}
+<span>Quaternion pow(Quaternion q, float e) {</span>
+<span>  auto theta_square = square(q.c23) + square(q.c31) + square(q.c12);</span>
+<span>  auto norm = sqrt(square(q.cs) + theta_square);</span>
+<span>  auto p = pow(norm, e);</span>
+<span>  auto a = e * acos(q.cs / norm);</span>
+<span>  auto s = p / sqrt(theta_square) * sin(a);</span>
+<span>  return {</span>
+<span>    .cs  = p * cos(a),</span>
+<span>    .c23 = s * q.c23,</span>
+<span>    .c31 = s * q.c31,</span>
+<span>    .c12 = s * q.c12</span>
+<span>  };</span>
+<span>}</span>
           </pre>
-        </figure>
+        </code>
       </section>
 
       <section>

@@ -49,19 +49,18 @@ It does, however, bring with it a tiny amount of bias.
 Not enough to matter in most applications, but for example in a long-running monte-carlo integration, it can add up.
 So what is this horribly shameful way of calculating a random number? Here it is:
         </p>
-        <figure>
+        <code>
           <pre>
-float absolutely_broken_random_float(float min, float max, RandomState& state)
-{
-  return random_float(state) * (max - min) + min;
-}
+<span>float absolutely_broken_random_float(float min, float max, RandomState& state) {</span>
+<span>  return random_float(state) * (max - min) + min;</span>
+<span>}</span>
           </pre>
-        </figure>
+        </code>
         <p>
 You have probably seen this before, because pretty much every implementation does exactly that <a href="https://gcc.gnu.org/onlinedocs/libstdc++/latest-doxygen/a00446_source.html#l01823" target="_blank">[0]</a><a href="https://github.com/microsoft/STL/blob/c319a7b2e4eb302b9abe9427079e669bf38ad6f8/stl/inc/random#L2666" target="_blank">[1]</a>.
 But if we use it for a range that doesn't happen to align with the way floats work, for example [0 .. 100), we get this:
         </p>
-        <figure>
+        <code>
           <pre>
                │                │   difference   │   max. float   │   max. float  
  input integer │  output float  │ between floats │ precision down │  precision up 
@@ -88,7 +87,7 @@ But if we use it for a range that doesn't happen to align with the way floats wo
      16777214  │ <b>99.9999847412</b>  │  0.000000e+00  │  7.629395e-06  │  7.629395e-06 
      16777215  │ 99.9999923706  │  7.629395e-06  │  7.629395e-06  │  7.629395e-06 
           </pre>
-        </figure>
+        </code>
         <p>
 Which shows that some float outputs appear twice.
 This isn't great, because this function is deterministic and will always double up the same numbers, so this rounding error is never resolved.
@@ -119,12 +118,12 @@ Now that negative numbers are also possible, there are cases with 2<sup>25</sup>
 And if we want to have [-1 .. 1], we can even fit 2<sup>25</sup>+1 values with even spacing!
 Thanks to the nature of floats, the same is true for [-2 .. 2), [-4 .. 4), and so on.
         </p>
-        <figure>
+        <code>
           <pre>
  ┼───┴───┴───┴───┴───┴───┴───┴───┼─┴─┴─┴─┴─┴─┴─┴─┼┴┴┴┴┴┴┴┼ ... ┼┴┴┴┴┴┴┴┼─┴─┴─┴─┴─┴─┴─┴─┼───┴───┴───┴───┴───┴───┴───┴───┼
 -1                             -1/2            -1/4    -1/8   1/8     1/4             1/2                              1
           </pre>
-        </figure>
+        </code>
         <p>
 If the distance between values is fixed to the coarsest resolution in the whole range, it is possible for the other end of the range to not align with that.
 For example, the range [1 .. 2<sup>33</sup>) will have a step size of 2<sup>33-24</sup> = 512, with one value at 0 and the next higher one at 512, we can never get a value of 1.
@@ -166,23 +165,22 @@ Now one multiplication with the step size and we're back in the original bounds,
         <p>
 So here is everything discussed above tied together into a nice little function.
         </p>
-        <figure>
+        <code>
           <pre>
-#include &lt;algorithm&gt; // std::max
-#include &lt;cmath&gt;     // std::nextafter, std::ceil, std::floor
-#include &lt;cstdint&gt;   // int32_t
-
-float random_float(float min, float max, RandomState& state)
-{
-  float d0 = std::nextafter(min, max) - min;
-  float d1 = max - std::nextafter(max, min);
-  float max_delta = std::max(d0, d1);
-  int32_t imin = (int32_t)std::ceil (min / max_delta);
-  int32_t imax = (int32_t)std::floor(max / max_delta);
-  return (float)random_int32(imin, imax, state) * max_delta;
-}
+<span>#include &lt;algorithm&gt; // std::max</span>
+<span>#include &lt;cmath&gt;     // std::nextafter, std::ceil, std::floor</span>
+<span>#include &lt;cstdint&gt;   // int32_t</span>
+<span></span>
+<span>float random_float(float min, float max, RandomState& state) {</span>
+<span>  float d0 = std::nextafter(min, max) - min;</span>
+<span>  float d1 = max - std::nextafter(max, min);</span>
+<span>  float max_delta = std::max(d0, d1);</span>
+<span>  int32_t imin = (int32_t)std::ceil (min / max_delta);</span>
+<span>  int32_t imax = (int32_t)std::floor(max / max_delta);</span>
+<span>  return (float)random_int32(imin, imax, state) * max_delta;</span>
+<span>}</span>
           </pre>
-        </figure>
+        </code>
         <p>
 Less nice is the performance of it: on a quick benchmark, it took 10 times as long to generate the same number of values as the biased float multiplication everyone is using.
 One reason will be that sometimes the <code>random_int32</code> function will reject a value and re-generate a new one.

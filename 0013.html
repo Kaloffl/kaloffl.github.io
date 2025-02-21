@@ -63,7 +63,7 @@ And finally operations like <code>exp</code>, <code>log</code> and <code>pow</co
 Let's look at the two multiplications mentions in the issue I linked above.
 I've changed from their index-based code to using subscripts.
         </p>
-        <figure>
+        <code>
           <pre>
 r = p * q
 
@@ -80,7 +80,7 @@ r<sub>i</sub> = p<sub>s</sub> * q<sub>i</sub> + p<sub>i</sub> * q<sub>s</sub> - 
 r<sub>j</sub> = p<sub>s</sub> * q<sub>j</sub> + p<sub>i</sub> * q<sub>k</sub> + p<sub>j</sub> * q<sub>s</sub> - p<sub>k</sub> * q<sub>i</sub>;
 r<sub>k</sub> = p<sub>s</sub> * q<sub>k</sub> - p<sub>i</sub> * q<sub>j</sub> + p<sub>j</sub> * q<sub>i</sub> + p<sub>k</sub> * q<sub>s</sub>;
           </pre>
-        </figure>
+        </code>
         <p>
 When staring at these two formulations long enough (or when looking at the <a target="_blank" href="https://github.com/PX4/PX4-Matrix/commit/19554c4470cd6322ffd18cb20a96485940f226b6?diff=split#diff-e6ff1cd48fcdade4c4e02cf799c912b9de2a2ffdaf8e8390c9d3a50c156625e6L190">diff</a>), we might notice that the only changes are sign flips.
 In fact, the sign changes are only in relation to <code>j</code>, which leads me to conclude that <code>j<sub>Hamilton</sub> = -j<sub>not-Hamilton</sub></code>. 

@@ -29,7 +29,6 @@
 Quadratic Bezier curves are probably the most popular curves in computer graphics.
 You're seeing them right now in the text you're reading, because TrueType fonts use them to describe the shape of the font glyphs.
 Cubic Bezier curves are also popular, but computationally and mathematically more difficult.
-TODO: link curve videos
         </p>
         <p>
 The simplest way to draw these curves is to use <a href="https://en.wikipedia.org/wiki/De_Casteljau%27s_algorithm" target="_blank">De Casteljau's algorithm</a>, but it's also not very practical.
@@ -68,14 +67,14 @@ Because the line has to go through <code>p</code>, the values <code>p<sub>x</sub
 That leaves us with only one unknown variable: <code>n<sub>x</sub></code> for which we have to solve.
         </p>
       </section>
-      <figure>
+      <code>
         <pre>
   p<sub>y</sub> = 0.5 - p<sub>x</sub>/(2n<sub>x</sub>) + n<sub>x</sub><sup>2</sup>       | * n<sub>x</sub>
 p<sub>y</sub>n<sub>x</sub> = 0.5n<sub>x</sub> - p<sub>x</sub>/2 + n<sub>x</sub><sup>3</sup>         | - p<sub>y</sub>n<sub>x</sub>
    0 = 0.5n<sub>x</sub> - p<sub>x</sub>/2 + n<sub>x</sub><sup>3</sup> - p<sub>y</sub>n<sub>x</sub>
      = n<sub>x</sub><sup>3</sup> + (0.5 - p<sub>y</sub>)n<sub>x</sub> - p<sub>x</sub>/2
         </pre>
-      </figure>
+      </code>
       <section>
         <p>
 Oh no, it's a cubic polynomial.
@@ -109,12 +108,12 @@ If the discriminant is negative, there will be three roots, corresponding to thr
         <p>
 Following a trigonometric solution, the three roots can be computed by:
         </p>
-        <figure>
+        <code>
           <pre>
 u = 2√(-l/3)
 r<sub>i</sub> = u*cos((acos(3s/(lu)) - 2πi)/3)
           </pre>
-        </figure>
+        </code>
         <p>
 Where <code>i</code> is <code>0</code>, <code>1</code> or <code>2</code> for the three possible roots.
 As mentioned before, we can leave out one which turns out to always be <code>1</code>.
@@ -123,32 +122,32 @@ In a case with multiple roots, we can simply compute both distances and pick the
 In code it might look like this:
         </p>
       </section>
-      <figure>
+      <code>
         <pre>
-float l = 0.5 - p.y;
-float s = -0.5 * p.x;
-
-float e = -(l * l * l / 27.0);
-float discriminant = fma(s, s, -4.0 * e);
-
-if (0.0 <= discriminant)
-{
-  // one root
-  float f = (-s + sign(p.x) * sqrt(discriminant)) * 0.5;
-  float qx = clamp(cbrt(f) + cbrt(e / f), min_x, max_x);
-  return hypot(qx - p.x, qx * qx - p.y) / scale;
-}
-// three roots
-// However, the center one can never be the closest, so we can ignore it.
-float r3p = sqrt(p.y - 0.5) * (2.0 / sqrt(3.0));
-float ac  = acos(3.0 * s / (l * r3p)) / 3.0;
-float qx0 = clamp(r3p * cos(ac                 ), min_x, max_x);
-float qx1 = clamp(r3p * cos(ac - 4.0 * Pi / 3.0), min_x, max_x);
-return min(
-    hypot(qx0 - p.x, qx0 * qx0 - p.y),
-    hypot(qx1 - p.x, qx1 * qx1 - p.y)) / scale;
+<span>float l = 0.5 - p.y;</span>
+<span>float s = -0.5 * p.x;</span>
+<span></span>
+<span>float e = -(l * l * l / 27.0);</span>
+<span>float discriminant = fma(s, s, -4.0 * e);</span>
+<span></span>
+<span>if (0.0 <= discriminant)</span>
+<span>{</span>
+<span>  // one root</span>
+<span>  float f = (-s + sign(p.x) * sqrt(discriminant)) * 0.5;</span>
+<span>  float qx = clamp(cbrt(f) + cbrt(e / f), min_x, max_x);</span>
+<span>  return hypot(qx - p.x, qx * qx - p.y) / scale;</span>
+<span>}</span>
+<span>// three roots</span>
+<span>// However, the center one can never be the closest, so we can ignore it.</span>
+<span>float r3p = sqrt(p.y - 0.5) * (2.0 / sqrt(3.0));</span>
+<span>float ac  = acos(3.0 * s / (l * r3p)) / 3.0;</span>
+<span>float qx0 = clamp(r3p * cos(ac                 ), min_x, max_x);</span>
+<span>float qx1 = clamp(r3p * cos(ac - 4.0 * Pi / 3.0), min_x, max_x);</span>
+<span>return min(</span>
+<span>    hypot(qx0 - p.x, qx0 * qx0 - p.y),</span>
+<span>    hypot(qx1 - p.x, qx1 * qx1 - p.y)) / scale;</span>
         </pre>
-      </figure>
+      </code>
       <section>
         <h3>The rest</h3>
         <p>
@@ -157,20 +156,20 @@ Easy.
 Well, in terms of code it isn't that much, but I have to admit that I wrote this code 5 years ago and it took me a while to figure it out again.
         </p>
       </section>
-      <figure>
+      <code>
         <pre>
-vec2  ny     = normalize(a - 2.0 * b + c);
-vec2  nx     = vec2(ny.y, -ny.x);
-float xa     = dot(a - b, ny) / dot(a - b, nx) / 2.0;
-float xc     = dot(c - b, ny) / dot(c - b, nx) / 2.0;
-float scale  = (xa - xc) / dot(a - c, nx);
-vec2  vertex = a - nx * (xa / scale) - ny * (xa * xa / scale);
-float min_x  = min(xa, xc);
-float max_x  = max(xa, xc);
-
-vec2  p = (g - vertex) * mat2(nx, ny) * scale;
+<span>vec2  ny     = normalize(a - 2.0 * b + c);</span>
+<span>vec2  nx     = vec2(ny.y, -ny.x);</span>
+<span>float xa     = dot(a - b, ny) / dot(a - b, nx) / 2.0;</span>
+<span>float xc     = dot(c - b, ny) / dot(c - b, nx) / 2.0;</span>
+<span>float scale  = (xa - xc) / dot(a - c, nx);</span>
+<span>vec2  vertex = a - nx * (xa / scale) - ny * (xa * xa / scale);</span>
+<span>float min_x  = min(xa, xc);</span>
+<span>float max_x  = max(xa, xc);</span>
+<span></span>
+<span>vec2  p = (g - vertex) * mat2(nx, ny) * scale;</span>
         </pre>
-      </figure>
+      </code>
       <section>
         <p>
 Starting out with <code>ny</code> and <code>nx</code> which are the basis-vectors of the coordinate-system in which our unit-parabola will exist.

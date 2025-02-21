@@ -37,7 +37,7 @@ The later graphs show <code>x</code> along the horizontal axis and the result of
         </p>
       </section>
 
-      <figure>
+      <code>
         <pre>
   │·   ·   ·   ·   ·   ·   ·
  0┤· · · · · · ├───╴ · · · ·
@@ -46,7 +46,7 @@ The later graphs show <code>x</code> along the horizontal axis and the result of
   -3  -2  -1   0   1   2   3
         </pre>
         <figcaption>Figure 0: <code>[0 .. 1)</code></figcaption>
-      </figure>
+      </code>
 
       <section>
         <h3>ceil() and floor()</h3>
@@ -58,7 +58,7 @@ Both these functions directly map to the x86 machinecode, which uses an immediat
         </p>
       </section>
 
-      <figure>
+      <code>
         <pre>
    math.h       │   x86 SSE
 ────────────────┼────────────────────────
@@ -67,9 +67,9 @@ Both these functions directly map to the x86 machinecode, which uses an immediat
  floor(float)   │  roundss xmm1, xmm2, 1
  floor(double)  │  roundsd xmm1, xmm2, 1
         </pre>
-      </figure>
+      </code>
 
-      <figure>
+      <code>
         <pre>
 floor(x)                            ceil(x)
  3┤· · · · · · · · · · · · ├         3┤· · · · · · · · · · ╶───┤
@@ -89,7 +89,7 @@ floor(x)                            ceil(x)
   -3  -2  -1   0   1   2   3          -3  -2  -1   0   1   2   3
         </pre>
         <figcaption>Figure 1: <code>floor()</code> and <code>ceil()</code>, aka round towards -∞ and ∞.</figcaption>
-      </figure>
+      </code>
 
       <section>
         <h3>trunc()</h3>
@@ -100,16 +100,16 @@ What may be interesting here, is that it changes which sides are inclusive or ex
         </p>
       </section>
 
-      <figure>
+      <code>
         <pre>
    math.h       │   x86 SSE
 ────────────────┼────────────────────────
  trunc(float)   │  roundss xmm1, xmm2, 3
  trunc(double)  │  roundsd xmm1, xmm2, 3
         </pre>
-      </figure>
+      </code>
 
-      <figure>
+      <code>
         <pre>
 trunc(x)
  3┤· · · · · · · · · · · · ├
@@ -129,7 +129,7 @@ trunc(x)
   -3  -2  -1   0   1   2   3
         </pre>
         <figcaption>Figure 2: <code>trunc()</code>, aka round towards 0.</figcaption>
-      </figure>
+      </code>
 
       <section>
         <h3>round()</h3>
@@ -153,7 +153,7 @@ This also doesn't introduce any errors anywhere else, I checked by iterating ove
         </p>
       </section>
 
-      <figure>
+      <code>
         <pre>
 C:
   trunc(x + copysign(0.49999997f, x));
@@ -164,9 +164,9 @@ x86 pseudo-asm:
   vaddss   xplus,    halfsign, x
   vroundss result,   result,   xplus, 3
         </pre>
-      </figure>
+      </code>
 
-      <figure>
+      <code>
         <pre>
 round(x)
  3┤· · · · · · · · · · · ├──
@@ -186,7 +186,7 @@ round(x)
   -3  -2  -1   0   1   2   3
         </pre>
         <figcaption>Figure 3: <code>round()</code>, aka round to nearest, tie away from 0.</figcaption>
-      </figure>
+      </code>
 
       <section>
         <h3>rint()</h3>
@@ -198,16 +198,16 @@ It again maps to a single instruction, so unless you really care about the behav
         </p>
       </section>
 
-      <figure>
+      <code>
         <pre>
    math.h       │   x86 SSE
 ────────────────┼────────────────────────
  rint(float)    │  roundss xmm1, xmm2, 4
  rint(double)   │  roundsd xmm1, xmm2, 4
         </pre>
-      </figure>
+      </code>
 
-      <figure>
+      <code>
         <pre>
 rint(x)
  3┤· · · · · · · · · · · ╶──
@@ -227,7 +227,7 @@ rint(x)
   -3  -2  -1   0   1   2   3
         </pre>
         <figcaption>Figure 4: <code>rint()</code>, aka by default round to nearest even.</figcaption>
-      </figure>
+      </code>
 
       <section>
         <h3>x87</h3>

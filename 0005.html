@@ -48,7 +48,7 @@ Now that we have a theory of why the game worked in the past, let's go and test 
 If what I wrote is true, we should be able to go up the call-stack from our crashy SHA1 function and find the place that decides to call this instead of some other function.
 And because I didn't show it last time, here's how the stack should look like when we don't accidentally mangle the <code>rsp</code> register:
         </p>
-        <figure id="table0">
+        <code id="table0">
           <pre>
 Address          │ To               │ From             │ Size │ Comment
 ═════════════════╪══════════════════╪══════════════════╪══════╪════════════════════════════════
@@ -75,13 +75,13 @@ Address          │ To               │ From             │ Size │ Comment
 0000000002C3F968 │ 0000000000000000 │ 00007FF815F22651 │      │ ntdll.00007FF815F22651         
           </pre>
           <figcaption>Listing 0: Fat stacks!</figcaption>
-        </figure>
+        </code>
         <p>
 So where do we land when we go up one frame, to address <code>00007FF7D50F67EF</code>?
 There should be a <code>call</code> to out function at <code>00007FF7D515FD00</code> there.
 Lets see...
         </p>
-        <figure id="table1">
+        <code id="table1">
           <pre>
 Address          │ Bytes                    │ Disassembly
 ═════════════════╪══════════════════════════╪════════════════════════════════════════════════
@@ -95,7 +95,7 @@ Address          │ Bytes                    │ Disassembly
 00007FF7D50F67FC │ 33C0                     │ xor eax,eax
           </pre>
           <figcaption>Listing 1: Who's calling?</figcaption>
-        </figure>
+        </code>
         <p>
 Okay, since we followed the return address, we have to look at the instruction before that, which is indeed a <code>call</code>.
 But for some reason, it's a <code>call</code> to a different address, what's up with that?
@@ -110,7 +110,7 @@ If Dirk has left nothing on the stack when the jump is executed, it will seem fr
 Great, another theory, even though we haven't even verified the fist one.
 Let's take a look at this Dirk fella.
         </p>
-        <figure id="table2">
+        <code id="table2">
           <pre>
 Address          │ Bytes                    │ Disassembly
 ═════════════════╪══════════════════════════╪════════════════════════════════════════════════════
@@ -144,7 +144,7 @@ Address          │ Bytes                    │ Disassembly
 00007FF7D515ECBA │ 90                       │ nop
           </pre>
           <figcaption>Listing 3: Dirk</figcaption>
-        </figure>
+        </code>
         <p>
 Looks like the function starts out with the usual prolog of saving some registers onto the stack and <code>mov</code>ing registers around.
 What's more interesting are the <code>test</code> instructions, followed by conditional jumps (<code>je</code> and <code>jne</code>).
@@ -165,7 +165,7 @@ Looking a few instructions above, we see <code>r10d</code> being assigned a valu
 This location happens to lie in the <code>.data</code> segment of the executable, which means it is a global variable with read and write access.
 Taking a peek at this memory location (and keeping in mind how little-endian works) we see that indeed bit 29 of that value is set:
         </p>
-        <figure id="table4">
+        <code id="table4">
           <pre>
 Address          │ Bytes                                           │ <a href="https://en.wikipedia.org/wiki/Windows-1252" target="_blank">Windows-1252</a>
 ═════════════════╪═════════════════════════════════════════════════╪═════════════════
@@ -174,7 +174,7 @@ Address          │ Bytes                                           │ <a href
 00007FF7D5B91BC8 │ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
           </pre>
           <figcaption>Listing 4</figcaption>
-        </figure>
+        </code>
         <p>
 Recalling the theory from before, that the game selects a code-path based on available CPU-features, this is probably a bunch of flags describing said features.
 That would also explain why this is a run-time check and why this global variable is in writable memory:
@@ -185,7 +185,7 @@ But if Dirk just does the reading, who did the writing?
 This is quickly answered by placing a memory-write breakpoint at this address and re-running the game for the billionth time.
 And just like that, we caught the culprit read-handed:
         </p>
-        <figure id="table5">
+        <code id="table5">
           <pre>
 Address          │ Bytes                    │ Disassembly
 ═════════════════╪══════════════════════════╪═════════════════════════════
@@ -206,12 +206,12 @@ Address          │ Bytes                    │ Disassembly
 00007FF7D50D8898 │ 41:89C1                  │ mov r9d,eax
           </pre>
           <figcaption>Listing 5: Got you now!</figcaption>
-        </figure>
+        </code>
         <p>
 Wait, this one is just clearing the already clean memory location.
 NEXT!
         </p>
-        <figure id="table6">
+        <code id="table6">
           <pre>
 Address          │ Bytes                    │ Disassembly
 ═════════════════╪══════════════════════════╪═════════════════════════════
@@ -221,7 +221,7 @@ Address          │ Bytes                    │ Disassembly
 <b>00007FF7D50D8975 │ 895F 08                  │ mov dword ptr ds:[rdi+8],ebx</b>
           </pre>
           <figcaption>Listing 6: For real this time!</figcaption>
-        </figure>
+        </code>
         <p>
 This is more like it.
 Stepping through the code and watching the memory location I can see that it is exactly this <code>mov</code> that is writing the values we observed earlier.
@@ -234,12 +234,12 @@ In our case, <code>eax</code> is set to 7 while <code>ecx</code> is cleared to 0
 And what does <code>cpuid</code> store in bit 29 of <code>ebx</code> with those values set?
 Here it is:
         </p>
-        <figure id="table7">
+        <code id="table7">
           <pre>
 Bit 29: SHA. supports Intel® Secure Hash Algorithm Extensions (Intel® SHA Extensions)
           </pre>
           <figcaption>Listing 7</figcaption>
-        </figure>
+        </code>
         <p>
 Who'd've thunk it!
 This now gives us a full picture of why the faulty code wasn't executed in the past, and is now offering quite a different kind of entertainment than I expected when I came back to this game.
@@ -267,7 +267,7 @@ And after some digging, I found a chunk of code that looked almost exactly the s
 I say almost, because this time it actually works correctly.
 Here's the comparison:
         </p>
-        <figure id="table8">
+        <code id="table8">
           <pre>
 Scanner Sombre                             │ Hollow Knight
 ═══════════════════════════════════════════╪═══════════════════════════════════════════
@@ -324,7 +324,7 @@ mov rsi,qword ptr ss:[rsp+10]              │ mov rsi,qword ptr ss:[rsp+10]
 ret                                        │ ret
           </pre>
           <figcaption>Listing 8: Happy hunting!</figcaption>
-        </figure>
+        </code>
         <p>
 Did you spot the difference?
 Gr8!

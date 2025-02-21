@@ -49,7 +49,7 @@ Another difference is in the definition of the Quaternion: for Hamiltonians it i
 For the JPL version on the other hand we have <code>i<sup>2</sup> = j<sup>2</sup> = k<sup>2</sup> = -1</code> and <code>ijk = 1</code> which requires two different numbers, how ugly!
 We can take this apart a bit further and look at the multiplication tables for both:
         </p>
-        <figure>
+        <code>
           <pre>
  Hamiltonian          JPL
 
@@ -59,7 +59,7 @@ We can take this apart a bit further and look at the multiplication tables for b
  j │-k -1  i      j │ k -1 -i
  k │ j -i -1      k │-j  i -1
           </pre>
-        </figure>
+        </code>
         <p>
 In the tables you can read off the result of multiplying the value on the left with the value on the top for each cell.
 It might be notable that one is the transpose of the other.
@@ -84,7 +84,7 @@ What's actually important is that they chose <code>e<sub>31</sub></code> instead
 Or maybe they were already fans of JPL Quaternions, because this choice is what swaps between the two variants.
 Let's look at more tables:
         </p>
-        <figure>
+        <code>
           <pre>
  1   │ e23  e13  e12      1   │ e23  e31  e12 
 ─────┼───────────────    ─────┼───────────────
@@ -97,7 +97,7 @@ Let's look at more tables:
 
  I couldn't use subscripts because they're not monospace :(
           </pre>
-        </figure>
+        </code>
         <p>
 So either switching between <code>e<sub>13</sub></code> and <code>e<sub>31</sub></code> or switching the order of multiplication will lead to a sign swap.
 Though the latter does not affect the direction of rotation, because the only change is that we're actually calculating <code>kji</code> instead of <code>ijk</code>.

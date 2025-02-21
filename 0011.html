@@ -90,7 +90,7 @@ Every VEX instruction has to start either with the byte <code>C4</code> or <code
 The former uses two additional bytes, while the latter uses only one and is vastly preferred by compilers as it seems.
 Here's what those bytes contain:
         </p>
-        <figure>
+        <code>
           <pre>
 C4:
 ╥───────────────────────────────╥───┬───┬───┬───────────────────╥───┬───────────────┬───┬───────╥
@@ -118,7 +118,7 @@ mmmmm  - Encodes prefix bytes for opcode: 0F, 0F 38 or 0F 3A. Most values reserv
 
 *these are inverted (1's-complement).
           </pre>
-        </figure>
+        </code>
         <p>
 The opcode for <code>xorps</code> is <code>0F 57</code> and we're not using any fancy registers that would require extension bits, so the <code>C5</code> encoding should suffice.
 The values in the second byte would all be 0s, but some fields are actually inverted, so instead we end up with <code>F8</code>.
@@ -130,7 +130,7 @@ It's called the ModR/M byte.
 Many instructions can also directly use a memory address instead of a register, reducing the need to put load and store instructions everywhere.
 If an instruction makes use of a memory address, that is encoded in the ModR/M byte and more information may be provided in the additional SIB byte.
         </p>
-        <figure>
+        <code>
           <pre>
 ModR/M:
 ╥───────┬───────────┬───────────╥
@@ -155,14 +155,14 @@ Key:
         If Mod is 00, 01 or 10 and R/M is 100 (which would be RSP but isn't) the ModR/M byte is followed by the SIB byte with more information.
         If Mod is 00 and R/M is 101, RBP is not used, and instead this instruction is followed by a 4-byte address that is used.
           </pre>
-        </figure>
+        </code>
       </section>
       <p>
 Okay, the ModR/M byte can get a bit complicated, but since we're only using registers we can set <code>Mod</code> to <code>11</code> and everything else to 0 since we're just using <code>xmm0</code>.
 No additional bytes are necessary, so we're done!
 And now for the real reason I've decided to write this article: Unicode-Art!
       </p>
-      <figure>
+      <code>
         <pre>
 C5 F8 57 C0
 ├┘ ├┘ ├┘ ├┘
@@ -189,7 +189,7 @@ C5 F8 57 C0
 │                      ┌┤
 └Two Byte VEX, leading 0F in opcode implied
         </pre>
-      </figure>
+      </code>
 
       <section>
         <h3>vmovss xmm0, [RAX]</h3>
@@ -208,7 +208,7 @@ The last thing to worry about is the ModR/M byte, now that we're loading somethi
 But without fancy offsets we just have to set the <code>Mod</code> field to <code>00</code> and set the <code>R/M</code> field to the register that holds the memory address.
 Note also that the <code>VEC.vvvv</code> field is unused this time, since our instruction has only two operands.
         </p>
-        <figure>
+        <code>
           <pre>
 C5 FA 10 00
 ├┘ ├┘ ├┘ ├┘
@@ -235,7 +235,7 @@ C5 FA 10 00
 │                      ┌┤
 └Two Byte VEX, leading 0F in opcode implied
           </pre>
-        </figure>
+        </code>
       </section>
 
       <section>
@@ -245,7 +245,7 @@ Time to get fancy with offsets, but not too fancy.
 A single byte offset between -128 and 127 can be encoded with just one more byte.
 Note that the offset, or displacement as the manual calls it, is signed, so if a displacement of 128 is desired, the full 4-byte displacement is required.
         </p>
-        <figure>
+        <code>
           <pre>
 C5 FA 59 40 2C
 ├┘ ├┘ ├┘ ├┘ ├┘
@@ -274,7 +274,7 @@ C5 FA 59 40 2C
 │                      ┌┤
 └Two Byte VEX, leading 0F in opcode implied
           </pre>
-        </figure>
+        </code>
       </section>
 
       <section>
@@ -285,7 +285,7 @@ For that we have to introduce the <code>SIB</code> byte.
 This byte directly follows the ModR/M byte, any displacements will be after the <code>SIB</code> byte.
 This encoding is quite common in function prologs and epilogs where <code>RSP+displacement</code> is used heavily instead of push and pop.
         </p>
-        <figure>
+        <code>
           <pre>
 SIB:
 ╥───────┬───────────┬───────────╥
@@ -301,7 +301,7 @@ Key:
    Base - Address of a general purpose register used as unscaled base.
           If value is 101 and Mod in ModR/M is 00, a 4-byte displacement is used instead if RBP.
           </pre>
-        </figure>
+        </code>
         <p>
 For our instruction we need no <code>Scale</code>, just <code>RSP</code> and one byte of displacement.
 So we set <code>R/M</code> to <code>100</code> which isn't <code>RSP</code>, but instead signals that a <code>SIB</code> byte will follow.
@@ -309,7 +309,7 @@ In that the <code>Scale</code> doesn't matter, so we leave it at 00, we don't ne
 Finally the <code>Base</code> will be <code>100</code> as well, which finally <em>does</em> mean <code>RSP</code>.
 The <code>Mod</code> bits will be <code>01</code> like last time to add a 1-byte displacement to the end.
         </p>
-        <figure>
+        <code>
           <pre>
 C5 FA 59 44 24 2C
 ├┘ ├┘ ├┘ ├┘ ├┘ ├┘
@@ -346,7 +346,7 @@ C5 FA 59 44 24 2C
 │                      ┌┤
 └Two Byte VEX, leading 0F in opcode implied
           </pre>
-        </figure>
+        </code>
         <p>
 There are so many exceptions and special cases that I haven't mentioned yet, but I think these examples should give anyone curious a good start.
 Your best friend will be the architecture manuals, as well as a disassembler that can tell you what the bytes mean that you just wrote.

@@ -46,45 +46,45 @@ For this I prepared one vector with my test values and another with just <code>1
 My strategy was to have one large value and two small values that together would be enough to change the large value's LSB, but not on their own.
 In the test I ran four functions: just a linear sum, a grouped sum, a double-precision version and finally the <code>dpps</code> instruction itself.
         </p>
-        <figure>
+        <code>
           <pre>
-struct vec4 {
-  float f[4];
-};
-
-float dpps_lin(vec4 a, vec4 b) {
-  float result;
-  result  = a.f[0] * b.f[0];
-  result += a.f[1] * b.f[1];
-  result += a.f[2] * b.f[2];
-  result += a.f[3] * b.f[3];
-  return result;
-}
-
-float dpps_grp(vec4 a, vec4 b) {
-  float result;
-  result  = a.f[0] * b.f[0] + a.f[1] * b.f[1];
-  result += a.f[2] * b.f[2] + a.f[3] * b.f[3];
-  return result;
-}
-
-float dpps_ref(vec4 a, vec4 b) {
-  double result;
-  result  = double(a.f[0]) * double(b.f[0]) + double(a.f[1]) * double(b.f[1]);
-  result += double(a.f[2]) * double(b.f[2]) + double(a.f[3]) * double(b.f[3]);
-  return float(result);
-}
-
-float dpps_nat(vec4 a, vec4 b) {
-  float result;
-  asm( // very hacky, but did what it's supposed to for the test.
-    "vmovups xmm0, [%1]\n"
-    "vmovups xmm1, [%2]\n"
-    "vdpps %0, xmm0, xmm1, 0xF1\n" : "=x"(result) : "r" (&a), "r" (&b));
-  return result;
-}
+<span>struct vec4 {</span>
+<span>  float f[4];</span>
+<span>};</span>
+<span></span>
+<span>float dpps_lin(vec4 a, vec4 b) {</span>
+<span>  float result;</span>
+<span>  result  = a.f[0] * b.f[0];</span>
+<span>  result += a.f[1] * b.f[1];</span>
+<span>  result += a.f[2] * b.f[2];</span>
+<span>  result += a.f[3] * b.f[3];</span>
+<span>  return result;</span>
+<span>}</span>
+<span></span>
+<span>float dpps_grp(vec4 a, vec4 b) {</span>
+<span>  float result;</span>
+<span>  result  = a.f[0] * b.f[0] + a.f[1] * b.f[1];</span>
+<span>  result += a.f[2] * b.f[2] + a.f[3] * b.f[3];</span>
+<span>  return result;</span>
+<span>}</span>
+<span></span>
+<span>float dpps_ref(vec4 a, vec4 b) {</span>
+<span>  double result;</span>
+<span>  result  = double(a.f[0]) * double(b.f[0]) + double(a.f[1]) * double(b.f[1]);</span>
+<span>  result += double(a.f[2]) * double(b.f[2]) + double(a.f[3]) * double(b.f[3]);</span>
+<span>  return float(result);</span>
+<span>}</span>
+<span></span>
+<span>float dpps_nat(vec4 a, vec4 b) {</span>
+<span>  float result;</span>
+<span>  asm( // very hacky, but did what it's supposed to for the test.</span>
+<span>    "vmovups xmm0, [%1]\n"</span>
+<span>    "vmovups xmm1, [%2]\n"</span>
+<span>    "vdpps %0, xmm0, xmm1, 0xF1\n" : "=x"(result) : "r" (&a), "r" (&b));</span>
+<span>  return result;</span>
+<span>}</span>
           </pre>
-        </figure>
+        </code>
         <p>
 After some trial and error, the test values I came up with were <code>1.0f</code>, <code>1.0f/33554432.0f</code>, <code>1.5f/33554432.0f</code> and <code>0.0f</code>.
 I tried all possible orderings of these values, which also revealed the order in which <code>dpps</code> works.
@@ -92,7 +92,7 @@ The correct answer is always <code>1.0000001192</code>, so we can see which func
 I don't expect anyone to read all of it, but here's the test result for completeness:
         </p>
       </section>
-      <figure>
+      <code>
         <pre>
 ⎧1.0000000000⎫     ⎧1.0000000000⎫   (lin) 1.0000000000
 ⎪0.0000000000⎪ dot ⎪1.0000000000⎪ = (grp) 1.0000001192
@@ -214,7 +214,7 @@ I don't expect anyone to read all of it, but here's the test result for complete
 ⎪0.0000000298⎪     ⎪1.0000000000⎪   (ref) 1.0000001192
 ⎩0.0000000000⎭     ⎩1.0000000000⎭   (nat) 1.0000000000
         </pre>
-      </figure>
+      </code>
       <section>
         <p>
 We can see that the <code>dpps</code> instruction (nat) always agrees with the grouped one, suggesting that works the same way internally.
@@ -231,12 +231,12 @@ But instead of <code>FMA</code>, we use <code>dpps</code>.
 This time we use both vectors, here are the values:
         </p>
       </section>
-      <figure>
+      <code>
         <pre>
 a = {1234567.0f, 1234567.0f,     0.0f, 0.0f},
 b = {3.1415927f, -8.742278e-08f, 0.0f, 0.0f}
         </pre>
-      </figure>
+      </code>
       <section>
         <p>
 We use the very creative value <code>1234567.0f</code>, multiply it separately by the upper and lower bits of <code>π</code>, and then add the two together, hoping for the correct answer <code>3.878506e+06</code>.
@@ -244,21 +244,21 @@ As before, I'm running the four functions, and even tried different permutations
 The result:
         </p>
       </section>
-      <figure>
+      <code>
         <pre>
 ⎧1.234567e+06⎫     ⎧ 3.141593e+00⎫   (lin) 3.878507e+06
 ⎪1.234567e+06⎪ dot ⎪-8.742278e-08⎪ = (grp) 3.878506e+06
 ⎪0.000000e+00⎪     ⎪ 0.000000e+00⎪   (ref) 3.878506e+06
 ⎩0.000000e+00⎭     ⎩ 0.000000e+00⎭   (nat) 3.878507e+06
         </pre>
-      </figure>
+      </code>
       <section>
         <p>
 Huh, <code>dpps</code> doesn't get the correct result, that's not too surprising, but the grouped version does, that's odd.
 Let's take a peek at the disassembly.
         </p>
       </section>
-      <figure>
+      <code>
         <pre>
 // dpps_lin
 push            rax
@@ -343,7 +343,7 @@ vmovss          xmm0, dword ptr [rsp+0x4]
 pop             rax
 ret             
         </pre>
-      </figure>
+      </code>
       <section>
         <p>
 Turns out Clang decided to throw in a few <code>FMA</code>s on it's own, even in the debug build.

@@ -7,31 +7,6 @@ body {
   max-width: 60em;
   padding: 0 0.62em;
 }
-figure {
-  font: 1em monospace;
-  background: indianred;
-  color: white;
-  display: table;
-  margin: 1em auto;
-  padding: 0 1em;
-  border-radius: 0.5em;
-  overflow: auto;
-}
-figure a {
-  color: white;
-}
-figcaption {
-  text-align: center;
-}
-pre {
-  line-height: 1.2em;
-}
-code {
-  font: 1.2em monospace;
-  background: rgba(205, 92, 92, 0.1); /* indianred at 10% opacity. Unfortunately CSS doesn't let you mix names and transparency. */
-  padding: 0.1em 0.2em;
-  border-radius: 0.3em;
-}
 nav {
   background-color: indianred; /* picked on accident, but looks nice */
 }
@@ -46,6 +21,45 @@ nav a {
   padding: 0 0.5em;
   color: white;
   display: inline-block;
+}
+figcaption {
+  text-align: center;
+}
+code { /* inline code */
+  font: 1.2em monospace;
+  background: rgba(205, 92, 92, 0.1); /* indianred at 10% opacity. Unfortunately CSS doesn't let you mix names and transparency. */
+  padding: 0.1em 0.2em;
+  border-radius: 0.3em;
+}
+code:has(pre) { /* code block */
+  font: 1em/1.2 monospace;
+  background: indianred;
+  color: white;
+  display: table;
+  margin: 1em auto;
+  padding: 0 1em;
+  border-radius: 0.5em;
+  overflow: auto;
+}
+code:has(span) { /* code block with line numbers */
+  counter-reset: item;
+  padding-left: 2.5em;
+}
+code span {
+  border-left: 1px solid rgba(255, 255, 255, 0.75);
+  padding-left: 0.5em;
+  display: inline-block;
+  line-height: 1.2;
+}
+code span:before { /* line-number hack, because the ol has periods after the numbers and doesn't work well in reader mode.  */
+  content: counter(item);
+  counter-increment: item;
+  width: 2em;
+  margin-left: -3em;
+  margin-right: 1em;
+  text-align: right;
+  display: inline-block;
+  opacity: 0.75;
 }
 footer {
   border-top: 1px solid indianred;

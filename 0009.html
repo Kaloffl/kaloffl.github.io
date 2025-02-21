@@ -49,7 +49,7 @@ If you've done anything with vectors before, you've probably seen them as a bunc
 While it might make sense at first to separate the dimensions from each other like Cartesian coordinates, it's annoying when you want to do algebra on them.
 Therefore we'll be using a different notation instead:
         </p>
-        <figure>
+        <code>
           <pre>
 Old and busted:
 
@@ -60,13 +60,13 @@ Old and busted:
 New<sup>1</sup> hotness:
 <b>v</b> = x * <b>e<sub>1</sub></b> + y * <b>e<sub>2</sub></b> + z * <b>e<sub>3</sub></b>
           </pre>
-        </figure>
+        </code>
         <p>
 Okay, now everything is in one expression, but what are those weird <code><b>e<sub>i</sub></b></code> that I threw in there?
 I like to think of them as makers that tell you which part of the vector expression belong to which dimension.
 Here's a simple example showing vector addition:
         </p>
-        <figure>
+        <code>
           <pre>
 <b>v<sub>1</sub></b> = a * <b>e<sub>1</sub></b> + b * <b>e<sub>2</sub></b> + c * <b>e<sub>3</sub></b> = a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b>
 <b>v<sub>2</sub></b> = x * <b>e<sub>1</sub></b> + y * <b>e<sub>2</sub></b> + z * <b>e<sub>3</sub></b> = x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>
@@ -85,14 +85,14 @@ Here's a simple example showing vector addition:
 // merge common terms
 = (a + x)<b>e<sub>1</sub></b> + (b + y)<b>e<sub>2</sub></b> + (c + z)<b>e<sub>3</sub></b>
           </pre>
-        </figure>
+        </code>
         <p>
 And what we get is component-wise addition, as you would expect from vectors.
 But this time it was completely driven by boring old middle-school algebra.
 Let's try another one!
 Subtraction and scalar multiplication would be too easy, so let's see what happens when you multiply two vectors!
         </p>
-        <figure>
+        <code>
           <pre>
 <b>v<sub>1</sub></b> = a<b>e<sub>1</sub></b> + b<b>e<sub>2</sub></b> + c<b>e<sub>3</sub></b>
 <b>v<sub>2</sub></b> = x<b>e<sub>1</sub></b> + y<b>e<sub>2</sub></b> + z<b>e<sub>3</sub></b>
@@ -112,23 +112,23 @@ Subtraction and scalar multiplication would be too easy, so let's see what happe
 + ay<b>e<sub>1</sub></b><b>e<sub>2</sub></b> + by<b>e<sub>2</sub></b><b>e<sub>2</sub></b> + cy<b>e<sub>3</sub></b><b>e<sub>2</sub></b>
 + az<b>e<sub>1</sub></b><b>e<sub>3</sub></b> + bz<b>e<sub>2</sub></b><b>e<sub>3</sub></b> + cz<b>e<sub>3</sub></b><b>e<sub>3</sub></b>
           </pre>
-        </figure>
+        </code>
         <p>
 Okay, this tuns out to be not as simple: we can't just separate out the <code><b>e<sub>i</sub></b></code>s when they are multiplied together like that.
 So it's time to reveal some new rules about this <code><b>e<sub>i</sub></b></code>s:
         </p>
-        <figure>
+        <code>
           <pre>
 <b>e<sub>i</sub></b> * <b>e<sub>j</sub></b> = -(<b>e<sub>j</sub></b> * <b>e<sub>i</sub></b>)  if  i != j
 <b>e<sub>i</sub></b> * <b>e<sub>i</sub></b> = 1
         </pre>
-      </figure>
+      </code>
       <p>
 So we can't just swap around products of <code><b>e<sub>i</sub></b></code>s like regular numbers, we have to negate them whenever we do.
 Swapping sums of them is unaffected though.
 Let's see if this helps us with the multiplication above.
       </p>
-        <figure>
+        <code>
           <pre>
   ax<b>e<sub>1</sub></b><b>e<sub>1</sub></b> + bx<b>e<sub>2</sub></b><b>e<sub>1</sub></b> + cx<b>e<sub>3</sub></b><b>e<sub>1</sub></b>
 + ay<b>e<sub>1</sub></b><b>e<sub>2</sub></b> + by<b>e<sub>2</sub></b><b>e<sub>2</sub></b> + cy<b>e<sub>3</sub></b><b>e<sub>2</sub></b>
@@ -147,7 +147,7 @@ Let's see if this helps us with the multiplication above.
 // sort and combine terms
 = (bz - cy)<b>e<sub>2</sub></b><b>e<sub>3</sub></b> + (cx - az)<b>e<sub>3</sub></b><b>e<sub>1</sub></b> + (ax + by + cz) + (ay - bx)<b>e<sub>1</sub></b><b>e<sub>2</sub></b>
           </pre>
-        </figure>
+        </code>
         <p>
 Now we have four distinct parts: the scalar part in the front that looks a lot like a vector dot product, and the three pieces that each have a unique combination of those <code><b>e<sub>i</sub></b></code>s stuck to them.
 That's clearly not a vector, so what's the point of this?
@@ -162,14 +162,14 @@ But the definition of Quaternions says that the "basic quaternions" square to -1
 Not quite, that rule above is just about a single vector component <code><b>e<sub>i</sub></b></code>.
 Here's what happens when we square a bivector component <code><b>e<sub>i</sub></b><b>e<sub>j</sub></b></code>:
         </p>
-        <figure>
+        <code>
           <pre>
 (<b>e<sub>i</sub></b><b>e<sub>j</sub></b>)<sup>2</sup>
 = <b>e<sub>i</sub></b><b>e<sub>j</sub></b><b>e<sub>i</sub></b><b>e<sub>j</sub></b>  // expand
 = -<b>e<sub>i</sub></b><b>e<sub>i</sub></b><b>e<sub>j</sub></b><b>e<sub>j</sub></b> // swap
 = -1       // eliminate
           </pre>
-        </figure>
+        </code>
         <p>
 In order for the vector components to square to 1, they first have to be swapped to be next to each other.
 And this swapping requires us to negate the product, thus producing the correct -1 as a result.
@@ -180,7 +180,7 @@ the Hamiltonian approach where <code>ijk = -1</code>,
 and the JPL standard where <code>ijk = -1</code>.
 Let's just see what we ended up with, assuming <code>i = <b>e<sub>23</sub></b></code> and so on.
         </p>
-        <figure>
+        <code>
           <pre>
   <b>e<sub>23</sub></b><b>e<sub>31</sub></b><b>e<sub>12</sub></b>
 = <b>e<sub>233112</sub></b> // merge <b>e</b>s
@@ -188,7 +188,7 @@ Let's just see what we ended up with, assuming <code>i = <b>e<sub>23</sub></b></
 = <b>e<sub>22</sub></b> // eliminate <b>e<sub>22</sub></b>
 = 1
           </pre>
-        </figure>
+        </code>
         <p>
 Okay, JPL it is, keep that in mind when comparing to other sources.
         </p>
@@ -215,7 +215,7 @@ In order to rotate a vector by a Quaternion the internet tells us that we first 
 But we have this new freedom that we can just multiply vectors with anything and let the algebra guide us, so let's see what happens when we multiply a Quaternion and a vector!
 I'll shorten <code><b>e<sub>i</sub></b><b>e<sub>j</sub></b></code> to just <code><b>e<sub>ij</sub></b></code>.
         </p>
-        <figure>
+        <code>
           <pre>
 // Definitions
 <b>q</b> = a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>
@@ -239,14 +239,14 @@ I'll shorten <code><b>e<sub>i</sub></b><b>e<sub>j</sub></b></code> to just <code
 // Sort and merge terms
 = (ax - cz + dy)<b>e<sub>1</sub></b> + (ay + bz - dx)<b>e<sub>2</sub></b> + (az - by + cx)<b>e<sub>3</sub></b> + (bx + cy + dz)<b>e<sub>123</sub></b>
           </pre>
-        </figure>
+        </code>
         <p>
 Okay, we almost get a vector out of it, but it has this weird fourth component, which is a trivector.
 This is getting out of hand!
 But let's not lose hope; the next step in Quaternion rotation is to multiply by the conjugate of the Quaternion, which is a fancy word for "negate the bivector part".
 The trivector part above only contains coefficients from the bivector part of the Quaternion, so if we negate it in the next step it might cancel out.
         </p>
-        <figure>
+        <code>
           <pre>
 // Conjugate:
  <b>q</b> = a + b<b>e<sub>12</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>23</sub></b>
@@ -280,7 +280,7 @@ The trivector part above only contains coefficients from the bivector part of th
 + ((bc - ad)2x + (a<sup>2</sup> - b<sup>2</sup> + c<sup>2</sup> - d<sup>2</sup>)y + (ab + cd)2z)<b>e<sub>2</sub></b>
 + ((ac + bd)2x + (cd - ab)2y + (a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> + d<sup>2</sup>)z)<b>e<sub>3</sub></b>
           </pre>
-        </figure>
+        </code>
         <p>
 Phew, that took a while to get right.
 But the hard work payed off: the result is a vector.
@@ -319,7 +319,7 @@ That looks an awful lot like squaring, so to halve a rotation we should take the
 How do we take the square root of a four-dimensional entity like a Quaternion?
 Let's first look at how the square of a Quaternion looks like:
         </p>
-        <figure>
+        <code>
           <pre>
 (a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>)<sup>2</sup>
 
@@ -339,13 +339,13 @@ Let's first look at how the square of a Quaternion looks like:
 
 = (a<sup>2</sup> - b<sup>2</sup> - c<sup>2</sup> - d<sup>2</sup>) + 2ab<b>e<sub>23</sub></b> + 2ac<b>e<sub>31</sub></b> + 2ad<b>e<sub>12</sub></b>
           </pre>
-        </figure>
+        </code>
         <p>
 Good, squaring a Quaternion gives us another Quaternion, so the square root should do the same.
 And more good news: if the square root of a Quaternion is another Quaternion, we have to find 4 unknowns.
 And if we take the four components of the Quaternion square above we have 4 equations, so a solution seems plausible.
         </p>
-        <figure>
+        <code>
           <pre>
 <b>q</b> = a + b<b>e<sub>23</sub></b> + c<b>e<sub>31</sub></b> + d<b>e<sub>12</sub></b>
 <b>q</b><sup>2</sup> = <b>r</b> = x + y<b>e<sub>23</sub></b> + z<b>e<sub>31</sub></b> + w<b>e<sub>12</sub></b>
@@ -365,7 +365,7 @@ b = y / (2a)
 c = z / (2a)
 d = w / (2a)
           </pre>
-        </figure>
+        </code>
         <p>
 See, I told you the quadrature would come in handy again!
 Though I've sneaked (snook?) that <code>|<b>r</b>|<sup>2</sup> = |<b>q</b>|<sup>4</sup></code> in there that you'll have to check for yourself.

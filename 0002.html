@@ -30,29 +30,28 @@ Recently I looking to get some exercise working with Projective Geometric Algebr
 So I scrolled through my personal codebase looking for something to reimplement, when I saw at my 2D line intersection code (listing 0).
 I couldn't remember where or how I got it, and I had probably ported it between languages at least twice since writing it.
         </p>
-        <figure id="listing0">
+        <code id="listing0">
           <pre>
-inline int line_line_intersection(
-  Vec2 line0_a, Vec2 line0_b,
-  Vec2 line1_a, Vec2 line1_b,
-  Vec2 *result)
-{
-  auto d0 = line0_b - line0_a;
-  auto d1 = line1_b - line1_a;
-  auto d2 = line0_a - line1_a;
-  auto det = cross(d0, d1);
-  auto s   = cross(d0, d2) / det;
-  auto t   = cross(d1, d2) / det;
-  if (0.0f &lt; s && s &lt; 1.0f && 0.0f &lt; t && t &lt; 1.0f)
-  {
-    if (result) *result = line0_a + d0 * t;
-    return 1;
-  }
-  return 0;
-}
+<span>inline int line_line_intersection(</span>
+<span>  Vec2 line0_a, Vec2 line0_b,</span>
+<span>  Vec2 line1_a, Vec2 line1_b,</span>
+<span>  Vec2 *result)</span>
+<span>{</span>
+<span>  auto d0 = line0_b - line0_a;</span>
+<span>  auto d1 = line1_b - line1_a;</span>
+<span>  auto d2 = line0_a - line1_a;</span>
+<span>  auto det = cross(d0, d1);</span>
+<span>  auto s   = cross(d0, d2) / det;</span>
+<span>  auto t   = cross(d1, d2) / det;</span>
+<span>  if (0.0f &lt; s && s &lt; 1.0f && 0.0f &lt; t && t &lt; 1.0f) {</span>
+<span>    if (result) *result = line0_a + d0 * t;</span>
+<span>    return 1;</span>
+<span>  }</span>
+<span>  return 0;</span>
+<span>}</span>
           </pre>
           <figcaption>Listing 0: It works, but why? And yes that's a 2D cross product.</figcaption>
-        </figure>
+        </code>
         <p>
 So I started rewriting it, using the obvious operations to join the points into lines and meet the lines to get the intersection.
 One caveat being, that the resulting point needs to be normalized, meaning that the e<sub>01</sub> (x) and e<sub>20</sub> (y) component have to be divided by e<sub>12</sub> (z).
@@ -63,7 +62,7 @@ The more efficient code though turned out to be taking the difference from the i
 If the intersection was between the points, the difference would point in opposite directions, making the product of dot products negative.
 If both products are negative, the intersection happened inside the segments.
         </p>
-        <figure id="equation0">
+        <code id="equation0">
           <pre>
 Given points a, b, c, d
 line  l = a join b
@@ -72,7 +71,7 @@ point p = normalize(l meet m)
 bool intersects = (a - p) dot (b - p) &lt; 0 && (c - p) dot (d - p) &lt; 0
           </pre>
           <figcaption>Equation 0: pseudomath for finding a line segment intersection with PGA</figcaption>
-        </figure>
+        </code>
         <p>
 But after implementing all that, I counted the number of calculations that each algorithm had to do and was surprised to find, that the PGA version was pretty bad.
 While my existing code has 11 subs/adds, 8 muls and 2 divs throughout those vector operations, the PGA version has 17 adds/subs, 14 muls and 2 divs.
@@ -82,73 +81,70 @@ If you want to count yourself, the "unrolled" code of both versions is below.
 I started to wonder why the original version was so much better, and how It worked in the first place.
 So after building some visualization I found a neat way to explain the algorithm, which I will show in the rest of this article.
         </p>
-        <figure id="listing1">
+        <code id="listing1">
           <pre>
-inline int line_line_intersection(
-  Vec2 line0_a, Vec2 line0_b,
-  Vec2 line1_a, Vec2 line1_b,
-  Vec2 *result)
-{
-  auto ab_x = line1_b.x - line1_a.x;
-  auto ab_y = line1_b.y - line1_a.y;
-  auto cd_x = line2_b.x - line2_a.x;
-  auto cd_y = line2_b.y - line2_a.y;
-  auto ca_x = line1_a.x - line2_a.x;
-  auto ca_y = line1_a.y - line2_a.y;
-  auto det =  ab_x * cd_y - ab_y * cd_x;
-  auto s   = (ab_x * ca_y - ab_y * ca_x) / det;
-  auto t   = (cd_x * ca_y - cd_y * ca_x) / det;
-  if (0.0f &lt;= s && s &lt;= 1.0f && 0.0f &lt;= t && t &lt;= 1.0f)
-  {
-    if (result) *result = {
-      line1_a.x + ab_x * t,
-      line1_a.y + ab_y * t
-    };
-    return 1;
-  }
-  return 0;
-}
+<span>inline int line_line_intersection(</span>
+<span>  Vec2 line0_a, Vec2 line0_b,</span>
+<span>  Vec2 line1_a, Vec2 line1_b,</span>
+<span>  Vec2 *result)</span>
+<span>{</span>
+<span>  auto ab_x = line1_b.x - line1_a.x;</span>
+<span>  auto ab_y = line1_b.y - line1_a.y;</span>
+<span>  auto cd_x = line2_b.x - line2_a.x;</span>
+<span>  auto cd_y = line2_b.y - line2_a.y;</span>
+<span>  auto ca_x = line1_a.x - line2_a.x;</span>
+<span>  auto ca_y = line1_a.y - line2_a.y;</span>
+<span>  auto det =  ab_x * cd_y - ab_y * cd_x;</span>
+<span>  auto s   = (ab_x * ca_y - ab_y * ca_x) / det;</span>
+<span>  auto t   = (cd_x * ca_y - cd_y * ca_x) / det;</span>
+<span>  if (0.0f &lt;= s && s &lt;= 1.0f && 0.0f &lt;= t && t &lt;= 1.0f) {</span>
+<span>    if (result) *result = {</span>
+<span>      line1_a.x + ab_x * t,</span>
+<span>      line1_a.y + ab_y * t</span>
+<span>    };</span>
+<span>    return 1;</span>
+<span>  }</span>
+<span>  return 0;</span>
+<span>}</span>
           </pre>
           <figcaption>Listing 1: Same math as above, but without the vector operations.</figcaption>
-        </figure>
-        <figure id="listing2">
+        </code>
+        <code id="listing2">
           <pre>
-inline int line_line_intersection(
-  Vec2 line0_a, Vec2 line0_b,
-  Vec2 line1_a, Vec2 line1_b,
-  Vec2 *result)
-{
-  // Join points a, b in line l
-  auto l_0 = line1_a.y * line1_b.x - line1_a.x * line1_b.y; // y_a*x_b-x_a*y_b
-  auto l_1 = line1_b.y - line1_a.y; // y_b-y_a
-  auto l_2 = line1_a.x - line1_b.x; // x_a-x_b
-
-  // Join points c, d in line m
-  auto m_0 = line2_a.y * line2_b.x - line2_a.x * line2_b.y; // y_c*x_d-x_c*y_d
-  auto m_1 = line2_b.y - line2_a.y; // y_d-y_c
-  auto m_2 = line2_a.x - line2_b.x; // x_c-x_d
-
-  // Meet lines l, m in point p
-  auto p_12  =  m_2 * l_1 - m_1 * l_2;
-  auto p_01  = (m_1 * l_0 - m_0 * l_1) / p_12;
-  auto p_20  = (m_0 * l_2 - m_2 * l_0) / p_12;
-
-  auto s = (line1_a.x - p_20) * (line1_b.x - p_20) + (line1_a.y - p_01) * (line1_b.y - p_01); 
-  auto t = (line2_a.x - p_20) * (line2_b.x - p_20) + (line2_a.y - p_01) * (line2_b.y - p_01); 
-
-  if (s &lt;= 0.0f && t &lt;= 0.0f)
-  {
-    if (result)
-    {
-      *result = { p_20, p_01 };
-    }
-    return 1;
-  }
-  return 0;
-}
+<span>inline int line_line_intersection(</span>
+<span>  Vec2 line0_a, Vec2 line0_b,</span>
+<span>  Vec2 line1_a, Vec2 line1_b,</span>
+<span>  Vec2 *result)</span>
+<span>{</span>
+<span>  // Join points a, b in line l</span>
+<span>  auto l_0 = line1_a.y * line1_b.x - line1_a.x * line1_b.y; // y_a*x_b-x_a*y_b</span>
+<span>  auto l_1 = line1_b.y - line1_a.y; // y_b-y_a</span>
+<span>  auto l_2 = line1_a.x - line1_b.x; // x_a-x_b</span>
+<span></span>
+<span>  // Join points c, d in line m</span>
+<span>  auto m_0 = line2_a.y * line2_b.x - line2_a.x * line2_b.y; // y_c*x_d-x_c*y_d</span>
+<span>  auto m_1 = line2_b.y - line2_a.y; // y_d-y_c</span>
+<span>  auto m_2 = line2_a.x - line2_b.x; // x_c-x_d</span>
+<span></span>
+<span>  // Meet lines l, m in point p</span>
+<span>  auto p_12  =  m_2 * l_1 - m_1 * l_2;</span>
+<span>  auto p_01  = (m_1 * l_0 - m_0 * l_1) / p_12;</span>
+<span>  auto p_20  = (m_0 * l_2 - m_2 * l_0) / p_12;</span>
+<span></span>
+<span>  auto s = (line1_a.x - p_20) * (line1_b.x - p_20) + (line1_a.y - p_01) * (line1_b.y - p_01); </span>
+<span>  auto t = (line2_a.x - p_20) * (line2_b.x - p_20) + (line2_a.y - p_01) * (line2_b.y - p_01); </span>
+<span></span>
+<span>  if (s &lt;= 0.0f && t &lt;= 0.0f) {</span>
+<span>    if (result) {</span>
+<span>      *result = { p_20, p_01 };</span>
+<span>    }</span>
+<span>    return 1;</span>
+<span>  }</span>
+<span>  return 0;</span>
+<span>}</span>
           </pre>
           <figcaption>Listing 2: The PGA version in all its glory.</figcaption>
-        </figure>
+        </code>
       </section>
 
       <section>
@@ -158,7 +154,7 @@ I was about to say that this algorithm is so easy, you could do it by hand.
 But then I was informed, that there exists an even easier way to tell if two lines intersect, called "by eye".
 So let's just stick to computers and algorithms.
         </p>
-        <figure id="figure0">
+        <code id="figure0">
           <pre>
                A           │           C
                 ╲          │           │
@@ -167,13 +163,13 @@ So let's just stick to computers and algorithms.
                    B       │           D
           </pre>
           <figcaption>Figure 0: Two non-intersecting and two intersecting lines, each made of two points A, B and C, D.</figcaption>
-        </figure>
+        </code>
         <p>
 We have here two line segments, defined by their endpoints: A, B and C, D.
 The first step to the algorithm is to turn the line segments into differences: A-B and D-C.
 Another way to look at is that we move both line segment so that one of their ends lines up with the origin.
         </p>
-        <figure id="figure1">
+        <code id="figure1">
           <pre>
 (A-B)               │      O─────(B-A)
      ╲              │      │
@@ -182,12 +178,12 @@ Another way to look at is that we move both line segment so that one of their en
         O───(D-C)   │  (D-C)
           </pre>
           <figcaption>Figure 1</figcaption>
-        </figure>
+        </code>
         <p>
 Now we can duplicate both lines and line them up, so that we get a parallelogram.
 Another way to look at it is, that we add the two differences, ending up with A-B+D-C.
         </p>
-        <figure id="figure2">
+        <code id="figure2">
           <pre>
 (A-B)───(A-B+D-C)   │      O─────(A-B)
      ╲   ╲          │      │     │
@@ -196,13 +192,13 @@ Another way to look at it is, that we add the two differences, ending up with A-
         O───(D-C)   │  (D-C)─────(A-B+D-C)
           </pre>
           <figcaption>Figure 2</figcaption>
-        </figure>
+        </code>
         <p>
 And this is where the magic happens: if we now take a third difference A-C, we can check if it lands inside the parallelogram or not.
 If it lands outside, as is the case on the left side, the line segments did not intersect.
 But if they do intersect, as is the case on the right side, A-C will land inside the parallelogram.
         </p>
-        <figure id="figure3">
+        <code id="figure3">
           <pre>
 (A-B)───(A-B+D-C)   │      O─────(A-B)
      ╲   ╲ (A-C)    │      │╲    │
@@ -211,7 +207,7 @@ But if they do intersect, as is the case on the right side, A-C will land inside
         O───(D-C)   │  (D-C)─────(A-B+D-C)
           </pre>
           <figcaption>Figure 3</figcaption>
-        </figure>
+        </code>
         <p>
 Now to be honest, I had to fiddle around a bit before finding which differences to take to get to this result, and they are not quite the same as in the original code.
 But the math can be made to work either way and this was in my opinion the best way to visualize it.

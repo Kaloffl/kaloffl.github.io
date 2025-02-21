@@ -68,7 +68,7 @@ I'm sure that I've missed something or got something wrong, so apologies in adva
         </p>
       </section>
 
-      <figure>
+      <code>
         <pre>
             Legacy Prefix              ┆                                                          Encoding Prefix                                                                                       Opcode                 ┆             ModR/M                              SIB                                                                              Displacement                                                                             ┆                                                                  Immediate
     67h                                ┆                                                                                                                                                    Primary Opcode Map + Operand       ┆    ModRM                                                                                                                                                                                                                  ┆    Immediate8 Op.imm
@@ -128,7 +128,7 @@ I'm sure that I've missed something or got something wrong, so apologies in adva
                                        ┆                                                                                                                                                 └─┤             Opcode            ├─┘ ┆
                                        ┆                                                                                                                                                   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ┆
         </pre>
-      </figure>
+      </code>
 
       <section>
         <h3>Legacy Prefix</h3>
@@ -140,12 +140,12 @@ In 64-bit mode you're usually loading and storing to 64-bit addresses stored in 
 This prefix switches the instruction to 32-bit addresses, which means only <code>eax</code> is used.
 I haven't found any real use for it yet.
         </p>
-        <figure>
+        <code>
           <pre>
 03 0A    | add ecx, [rdx]
 <b>67</b> 03 0A | add ecx, [edx]
           </pre>
-        </figure>
+        </code>
         <p>
 Next is <code>66<sub>16</sub></code> which is the <i>operand size override</i>.
 Operands are 32-bit by default and this prefix changes them to be 16-bit.
@@ -154,13 +154,13 @@ This prefix is also used together with <code>F3<sub>16</sub></code> and <code>F2
 Usually those are SSE instruction where the prefixes are selecting between packed/single and double/single precision.
 Without a prefix the default is <i>packed single</i>, <code>66<sub>16</sub></code> selects the <i>packed double</i> variant.
         </p>
-        <figure>
+        <code>
           <pre>
 <b>66</b> 03 0A    | add cx, [rdx]
 0F 58 CA    | addps xmm1, xmm2
 <b>66</b> 0F 58 CA | addpd xmm1, xmm2
           </pre>
-        </figure>
+        </code>
         <p>
 The repeat-zero-prefix <code>F3<sub>16</sub></code> can only be used with a few specific instructions.
 With those it is possible to run loops entirely on the CPU, without any compare and branch instructions.
@@ -171,13 +171,13 @@ Unfortunately more complicated <code>memcpy</code> implementations are often fas
         <p>
 For SSE instructions this prefix is used as an opcode extension, usually selecting the <i>single single</i> aka f32-scalar variant.
         </p>
-        <figure>
+        <code>
           <pre>
 <b>F3</b> A4 | rep movsd [rdi], [rsi]
 
 <b>F3</b> 0F 58 CA | addss xmm1, xmm2
           </pre>
-        </figure>
+        </code>
         <p>
 The repeat-nonzero-prefix <code>F2<sub>16</sub></code> is almost the same as the repeat-zero above, with the difference that the second termination criterion is that the zero flag is set.
 For SSE instructions it selects the <i>single double</i> aka f64-scalar variant.
@@ -185,19 +185,19 @@ For SSE instructions it selects the <i>single double</i> aka f64-scalar variant.
         <p>
 Having any of these three opcode-extension prefixes in front of a <code>VEX</code>, <code>XOP</code> or <code>EVEX</code> instruction is not permitted, but showing that in the diagram would have made it even more complicated...
         </p>
-        <figure>
+        <code>
           <pre>
 <b>F2</b> 0F 58 CA | addsd xmm1, xmm2
           </pre>
-        </figure>
+        </code>
         <p>
 <code>F0<sub>16</sub></code> is the lock prefix, which can be applied to certain operations that read, modify and write memory, to make them atomic.
         </p>
-        <figure>
+        <code>
           <pre>
 <b>F0</b> 0F B1 11 | lock cmpxchg [rcx], edx
           </pre>
-        </figure>
+        </code>
         <p>
 <code>2E<sub>16</sub></code>, <code>3E<sub>16</sub></code>, <code>26<sub>16</sub></code>, <code>64<sub>16</sub></code>, <code>65<sub>16</sub></code>, <code>36<sub>16</sub></code> are segment-override prefixes.
 However, in 64-bit mode only <code>64<sub>16</sub></code> and <code>65<sub>16</sub></code> do anything, the rest are ignored.
@@ -207,22 +207,22 @@ This might be useful when accessing thread-local memory, because Windows and Lin
         <p>
 <code>2E<sub>16</sub></code> and <code>3E<sub>16</sub></code> also used to be branch-hints for conditional jump instructions, but that doesn't seem to be a thing anymore.
         </p>
-        <figure>
+        <code>
           <pre>
 <b>64</b> 8B 0A | mov ecx, fs:[rdx]
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>REX</h3>
-        <figure>
+        <code>
           <pre>
  REX Prefix
 ╭───┬───┬───┬───┬───┬───┬───┬───╮
 ┤ 0 │ 1 │ 0 │ 0 │ W │ R │ X │ B ├
 ╰───┴───┴───┴───┴───┴───┴───┴───╯
           </pre>
-        </figure>
+        </code>
         <p>
 The <code>REX</code> prefix can be applied to any legacy instruction to imbue it with some new features.
 The prefix is one byte long and contains 4 modifier bits that are detailed below, but even the presence of this prefix already has an effect.
@@ -233,29 +233,29 @@ When the <code>REX</code> prefix is present, the last 4 registers change to <cod
         <p>
 All the bits in the <code>REX</code> prefix can also be encoded in the <code>VEX</code>, <code>XOP</code> and <code>EVEX</code> prefixes where they serve the same purpose.
         </p>
-        <figure>
+        <code>
           <pre>
 00 E8    | add al, ch
 <b>40</b> 00 E8 | add al, bpl
           </pre>
-        </figure>
+        </code>
         <p>
 <code>W</code> is a modifier bit introduced in the <code>REX</code> prefix, that changes instructions to 64-bit operations.
 When set, the <code>66<sub>16</sub></code> size override is ignored.
         </p>
-        <figure>
+        <code>
           <pre>
 01 D1    | add ecx, edx
 <b>48</b> 01 D1 | add rcx, rdx
           </pre>
-        </figure>
+        </code>
         <p>
 By default, instructions have only 3 bits to select their operands.
 With <code>R</code> there is a fourth bit available for the <code>reg</code> operand, giving access to registers <code>r8</code> - <code>r15</code>.
 <code>X</code> does the same but for the <code>SIB.index</code> operand which we'll come to later.
 And finally <code>B</code> applies to <code>ModRM.r/m</code>, <code>SIB.base</code> or the operand embedded in the opcode.
         </p>
-        <figure>
+        <code>
           <pre>
 48 03 0A | add rcx, [rdx]
 <b>4C</b> 03 0A | add r9, [rdx]
@@ -268,11 +268,11 @@ And finally <code>B</code> applies to <code>ModRM.r/m</code>, <code>SIB.base</co
 48 0F C9 | bswap rcx
 <b>49</b> 0F C9 | bswap r9
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>VEX</h3>
-        <figure>
+        <code>
           <pre>
  C5h  2-byte VEX Prefix
 ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
@@ -283,7 +283,7 @@ And finally <code>B</code> applies to <code>ModRM.r/m</code>, <code>SIB.base</co
 ┤ 1 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 │ 0 ├───┤ R │ X │ B │       mmmmm       ├───┤ W │     vvvv      │ L │  pp   ├
 ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
           </pre>
-        </figure>
+        </code>
         <p>
 The <code>VEX</code> encoding is what pretty much all floating-point code on AMD and Intel CPUs uses nowadays.
 It incorporates and extends the existing SSE instructions, allows for 256-bit registers and adds a third operand.
@@ -295,7 +295,7 @@ Legacy SSE leaves the high bits unchanged, while <code>VEX</code> always clears 
 For some reason, this is related to a heavy performance penalty when switching between legacy and <code>VEX</code>.
 So nowadays you always want to use <code>VEX</code>, even when legacy SSE is a byte shorter.
         </p>
-        <figure>
+        <code>
           <pre>
 66 0F 58 CA | addpd xmm1, xmm2
 C5 F1 58 CA | vaddpd xmm1, xmm1, xmm2
@@ -311,38 +311,38 @@ C5 F2 58 CA | vaddss xmm1, xmm1, xmm2
 
 C4 E2 E0 F5 CA | bzhi rcx, rdx, rbx
           </pre>
-        </figure>
+        </code>
         <p>
 In order to encode the <code>0F<sub>16</sub></code>, <code>0F_38<sub>16</sub></code>, <code>0F_3A<sub>16</sub></code> prefixes, the <code>mmmmm</code> bits in the 3-byte <code>VEX</code> prefix are used.
 I have no idea why they used so many bits, and neither does Intel, because they shortened it to <code>mm</code> in the <code>EVEX</code> prefix.
 The 2-byte <code>VEX</code> prefix doesn't have this field and always defaults to <code>0F<sub>16</sub></code>.
         </p>
-        <figure>
+        <code>
           <pre>
 66 0F 38 DE CA    | aesdec xmm1, xmm2
 C4 E2 71 DE CA    | vaesdec xmm1, xmm1, xmm2
 62 F2 75 08 DE CA | {evex} vaesdec xmm1, xmm1, xmm2
           </pre>
-        </figure>
+        </code>
         <p>
 The <code>VEX</code> encoding adds a third operand, which allows for operations where two operands are read and another one is written.
 Legacy operations always used one  operand both for reading and writing, destroying one input in the process.
 The new operand is encoded with the <code>vvvv</code> bits which allows to address 16 registers out of the box.
         </p>
-        <figure>
+        <code>
           <pre>
 C5 F0 58 CA | vaddps xmm1, xmm1, xmm2
 C5 E0 58 CA | vaddps xmm1, xmm3, xmm2
 C5 B0 58 CA | vaddps xmm1, xmm9, xmm2
           </pre>
-        </figure>
+        </code>
         <p>
 Another feature introduced with <code>VEX</code> were the 256-bit registers <code>ymm0</code> - <code>ymm15</code>.
 To indicate that an instruction wants to use those, the <code>L</code> bit is used.
 Then <code>EVEX</code> came along and added 512-bit registers, adding the need for two <code>LL</code> bits.
 There are more features in <code>EVEX</code> using these bits which will be mentioned later on.
         </p>
-        <figure>
+        <code>
           <pre>
 C5 F0 58 CA | vaddps xmm1, xmm1, xmm2
 C5 F4 58 CA | vaddps ymm1, ymm1, ymm2
@@ -351,59 +351,59 @@ C5 F4 58 CA | vaddps ymm1, ymm1, ymm2
 62 F1 74 28 58 CA | {evex} vaddps ymm1, ymm1, ymm2
 62 F1 74 48 58 CA | {evex} vaddps zmm1, zmm1, zmm2
           </pre>
-        </figure>
+        </code>
         <p>
 To encode the <code>66<sub>16</sub></code>, <code>F2<sub>16</sub></code>, <code>F3<sub>16</sub></code> prefixes, the <code>pp</code> bits are used.
 The use of those prefixes in front of the <code>VEX</code>, <code>XOP</code> and <code>EVEX</code> prefix is not permitted.
         </p>
-        <figure>
+        <code>
           <pre>
 C5 F1 58 CA | vaddpd xmm1, xmm1, xmm2
 C5 F0 58 CA | vaddps xmm1, xmm1, xmm2
 C5 F3 58 CA | vaddsd xmm1, xmm1, xmm2
 C5 F2 58 CA | vaddss xmm1, xmm1, xmm2
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>XOP</h3>
-        <figure>
+        <code>
           <pre>
  8Fh  XOP Prefix, same structure as 3-byte VEX
 ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
 ┤ 1 │ 0 │ 0 │ 0 │ 1 │ 1 │ 1 │ 1 ├───┤ R │ X │ B │       mmmmm       ├───┤ W │     vvvv      │ L │  pp   ├
 ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
           </pre>
-        </figure>
+        </code>
         <p>
 <code>XOP</code> is an extension to the instruction set by AMD.
 Intel doesn't seem to offer any support for these instructions.
 The encoding is almost the same as the 3-byte <code>VEX</code> encoding, except for the first byte and the allowed values for the <code>mmmmm</code> bits.
 Both vector and general-purpose instructions are part of this extension.
         </p>
-        <figure>
+        <code>
           <pre>
 8F E9 70 02 F2 | blci ecx, edx
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>EVEX</h3>
-        <figure>
+        <code>
           <pre>
  62h  EVEX Prefix
 ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
 ┤ 0 │ 1 │ 1 │ 0 │ 0 │ 0 │ 1 │ 0 ├───┤ R │ X │ B │ R'│ 0 │ 0 │  mm   ├───┤ W │     vvvv      │ 1 │  pp   ├───┤ z │   LL  │ b │ V'│    aaa    ├
 ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
           </pre>
-        </figure>
+        </code>
         <p>
 <code>EVEX</code> is an extension with its own new encoding scheme, first supported by Intel (and then kinda dropped), but also adopted by AMD.
 It adds 512-bit registers and doubles the number of addressable registers to 32.
 Each operation can name a mask register <code>k0</code> - <code>k7</code> to only modify certain lanes of the destination operand.
 Additional features are embedded rounding control for float operations and embedded broadcasting from one memory location to all register lanes on all operations that load from memory.
         </p>
-        <figure>
+        <code>
           <pre>
 62 A1 74 00 58 C2 | vaddps xmm16, xmm17, xmm18
 62 A1 74 40 58 C2 | vaddps zmm16, zmm17, zmm18
@@ -411,27 +411,27 @@ Additional features are embedded rounding control for float operations and embed
 62 F1 6C 18 58 0B | vaddps xmm1, xmm2, [rbx]{1to4}
 62 F1 6C 49 58 CB | vaddps zmm1 {k1}, zmm2, zmm3
           </pre>
-        </figure>
+        </code>
         <p>
 To encode up to 32 operands, two new bits are added: <code>R'</code> for <code>reg</code> and <code>V'</code> for <code>vvvv</code>.
 Additionally, the <code>X</code> bit is now used as the fifth bit for <code>ModRM.r/m</code> when no <code>SIB</code> byte is present.
 The encoding gets away with one less extra bit, because only the vector registers are extended to 32, while the general purpose registers remain at 16.
         </p>
-        <figure>
+        <code>
           <pre>
 62 F1 6C 08 58 CB | {evex} vaddps xmm1, xmm2, xmm3
 62 A1 74 00 58 C2 | {evex} vaddps xmm16, xmm17, xmm18
           </pre>
-        </figure>
+        </code>
         <p>
 When using a mask, the <code>z</code> bit is used to select what to do with the masked-off lanes: set them to 0 or leave then untouched.
         </p>
-        <figure>
+        <code>
           <pre>
 62 F1 6C 49 58 CB | vaddps zmm1 {k1}, zmm2, zmm3
 62 F1 6C C9 58 CB | vaddps zmm1 {k1}{z}, zmm2, zmm3
           </pre>
-        </figure>
+        </code>
         <p>
 The <code>b</code> bit serves multiple purposes depending on the context.
 If the operation has a memory operand, settings this bit enables broadcasting, which will load either 4 or 8 byte from memory and copy it to all 2, 4, 8, or 16 lanes of the operand.
@@ -441,7 +441,7 @@ The number of lanes to copy to is controlled by the <code>LL</code> bits.
 If the operation is purely between registers, settings the bit silences arithmetic exceptions (SAE).
 On operations that support it, the <code>LL</code> bits can be used to set the rounding mode to round up, down, to even or to zero when <code>b</code> is set.
         </p>
-        <figure>
+        <code>
           <pre>
 62 F1 ED 18 58 0B | vaddpd xmm1, xmm2, [rbx]{1to2}
 62 F1 6C 18 58 0B | vaddps xmm1, xmm2, [rbx]{1to4}
@@ -454,18 +454,18 @@ On operations that support it, the <code>LL</code> bits can be used to set the r
 
 62 F1 6C 38 58 CB | vaddps zmm1, zmm2, zmm3, {rd-sae}
           </pre>
-        </figure>
+        </code>
         <p>
 To add masking to every operation, the <code>EVEX</code> prefix adds the <code>aaa</code> bits to encode the mask registers <code>k0</code> - <code>k7</code>.
 Mask <code>k0</code> is special, as it can't be modified and is always 0, enabling all lanes.
         </p>
-        <figure>
+        <code>
           <pre>
 62 F1 6C 48 58 CB | vaddps zmm1, zmm2, zmm3
 62 F1 6C 48 58 CB | vaddps zmm1 {k0}, zmm2, zmm3 // some assemblers don't allow explicitly naming k0
 62 F1 6C 49 58 CB | vaddps zmm1 {k1}, zmm2, zmm3
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>Opcodes</h3>
@@ -478,47 +478,47 @@ Some opcodes dedicate their last 3 bits to encoding a register, removing the nee
 Other instructions go the other way and steal the <code>ModRM.reg</code> bits to add 3 more bits to the opcode.
 Which length (5-bit, 8-bit, 11-bit) an opcode has depends on the opcode itself.
         </p>
-        <figure>
+        <code>
           <pre>
 b9 34 12 00 00    | mov ecx, 0x1234
 41 b9 34 12 00 00 | mov r9d, 0x1234
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>ModRM</h3>
-        <figure>
+        <code>
           <pre>
  ModRM
 ╭───┬───┬───┬───┬───┬───┬───┬───╮
 ┤  Mod  │    Reg    │    R/M    ├
 ╰───┴───┴───┴───┴───┴───┴───┴───╯
           </pre>
-        </figure>
+        </code>
         <p>
 The <code>ModRM</code> byte encodes one or two operands of the instruction.
 The first two bits are the <code>mod</code> which controls whether the last three bits name a register or memory operand, as well as the number of displacement bytes in case of a memory operand.
 The three bits in the middle are the <code>reg</code> field which either names a register operand or is used as an extension to the opcode.
         </p>
-        <figure>
+        <code>
           <pre>
 03 CA             | add ecx, edx
 03 0A             | add ecx, [rdx]
 03 4A 12          | add ecx, [rdx+0x12]
 03 8A 56 34 12 00 | add ecx, [rdx+0x123456]
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>SIB</h3>
-        <figure>
+        <code>
           <pre>
  ModRM                               SIB
 ╭───┬───┬───┬───┬───┬───┬───┬───╮   ╭───┬───┬───┬───┬───┬───┬───┬───╮
 ┤  Mod  │    Reg    │ 1 │ 0 │ 0 ├───┤ Scale │   Index   │   Base    ├
 ╰───┴───┴───┴───┴───┴───┴───┴───╯   ╰───┴───┴───┴───┴───┴───┴───┴───╯
           </pre>
-        </figure>
+        </code>
         <p>
 The <code>SIB</code> byte is an optional extension to the <code>ModRM</code> byte, which has additional information about memory operands.
 <code>ModRM</code> alone can only name a base register and a displacement, while <code>SIB</code> can supply a scale and an index register.
@@ -527,14 +527,14 @@ The next three bits are the index, which can get additional bits from the <code>
 The final three bits are the base, which no loger resides in the <code>ModRM</code>, because there the base field contains a special value (4) that indicates the presence of the <code>SIB</code> byte.
 This also means that you'll need the <code>SIB</code> byte if you want to use register 4 (<code>esp</code>, <code>xmm4</code>, ...), 12 (<code>r12</code>, ...), 20 or 28.
         </p>
-        <figure>
+        <code>
           <pre>
 03 0C 1A | add ecx, [rdx+rbx*1]
 03 0C 5A | add ecx, [rdx+rbx*2]
 03 0C 9A | add ecx, [rdx+rbx*4]
 03 0C DA | add ecx, [rdx+rbx*8]
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>Displacement</h3>
@@ -545,14 +545,14 @@ A special case of <code>mov</code> instruction is followed by a 64-bit displacem
 So it is really more of a absolute memory address than a displacement.
 Oh and <code>EVEX</code> instructions that have a single byte of displacement use a <i>compressed displacement</i> scheme, where the real displacement is the encoded one multiplied by some factor that depends on the instruction.
         </p>
-        <figure>
+        <code>
           <pre>
 A1 EF CD AB 98 76 54 32 10 | mov eax, [0x0123456789ABCDEF]
 
 62 F1 6C 48 58 8A FF 0F 00 00 | vaddps zmm1, zmm2, [rdx + 4095]
 62 F1 6C 48 58 4A 40          | vaddps zmm1, zmm2, [rdx + 4096]
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>Immediate</h3>
@@ -561,7 +561,7 @@ Some instructions take additional information via an immediate which is 1, 2 or 
 A special case is again the <code>mov</code> instruction which has a variant that allows for an 8-byte immediate value.
 Some instructions encode a fourth operand in the upper 4 bit of the immediate.
         </p>
-        <figure>
+        <code>
           <pre>
    04 01          | add al, 0x01
 66 05 23 01       | add ax, 0x0123
@@ -572,7 +572,7 @@ Some instructions encode a fourth operand in the upper 4 bit of the immediate.
 
 C4 E3 <abbr title="nice">69</abbr> 4A CB 40 | vblendvps xmm1, xmm2, xmm3, xmm4
           </pre>
-        </figure>
+        </code>
       </section>
       <section>
         <h3>(dis)honorable mentions</h3>

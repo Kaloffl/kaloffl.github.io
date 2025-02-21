@@ -59,59 +59,59 @@ To keep the sensor-ISR as fast as possible, we implemented a 2-step approach: th
 To deal with the atomicity problem mentioned above, a ping-pong-buffer is used: one buffer for reading one for writing, switching around every 10ms.
 Here is the relevant code, you can also check it out in the <a target="_blank" href="https://godbolt.org/z/a4b5sG5EM">Compiler Explorer</a>:
         </p>
-        <figure>
+        <code>
           <pre>
-#include &lt;avr/io.h&gt;
-#include &lt;avr/interrupt.h&gt;
-
-// Global variables
-volatile int16_t ticks_accumulator[2] = {};
-volatile int8_t  ticks = {};
-volatile uint8_t timer_counter = 0;
-volatile uint8_t send_ticks = 0;
-
-// Pin interrupt triggered by external sensor
-ISR(INT0_vect) {
-    int8_t sign = -1;
-    if ((PIND >> PD0) & 1) sign = -sign;
-    if ((PIND >> PD1) & 1) sign = -sign;
-    ticks += sign;
-}
-
-// Timer interrupt triggered every 0.624ms
-ISR(TIMER2_COMP_vect) {
-    uint8_t index = (timer_counter & 0x10) ? 1 : 0;
-    ticks_accumulator[index] += ticks;
-    ticks = 0;
-    
-    // every 16 times (9.984ms)
-    if ((timer_counter & 0x0F) == 0x0F) {
-        send_ticks = 1;
-    }
-    ++timer_counter;
-}
-
-// unimportant
-void setup();
-void send(int16_t *data);
-
-// Main entry point into code
-int main() {
-    setup();
-    while (1) {
-        if (send_ticks) {
-            int16_t values;
-            send_ticks = 0;
-
-            uint8_t index = (timer_counter & 0x10) ? 1 : 0;
-            values = ticks_accumulator[index];
-            ticks_accumulator[index] = 0;
-            send(&values);
-        }
-    }
-}
+<span>#include &lt;avr/io.h&gt;</span>
+<span>#include &lt;avr/interrupt.h&gt;</span>
+<span></span>
+<span>// Global variables</span>
+<span>volatile int16_t ticks_accumulator[2] = {};</span>
+<span>volatile int8_t  ticks = {};</span>
+<span>volatile uint8_t timer_counter = 0;</span>
+<span>volatile uint8_t send_ticks = 0;</span>
+<span></span>
+<span>// Pin interrupt triggered by external sensor</span>
+<span>ISR(INT0_vect) {</span>
+<span>    int8_t sign = -1;</span>
+<span>    if ((PIND >> PD0) & 1) sign = -sign;</span>
+<span>    if ((PIND >> PD1) & 1) sign = -sign;</span>
+<span>    ticks += sign;</span>
+<span>}</span>
+<span></span>
+<span>// Timer interrupt triggered every 0.624ms</span>
+<span>ISR(TIMER2_COMP_vect) {</span>
+<span>    uint8_t index = (timer_counter & 0x10) ? 1 : 0;</span>
+<span>    ticks_accumulator[index] += ticks;</span>
+<span>    ticks = 0;</span>
+<span>    </span>
+<span>    // every 16 times (9.984ms)</span>
+<span>    if ((timer_counter & 0x0F) == 0x0F) {</span>
+<span>        send_ticks = 1;</span>
+<span>    }</span>
+<span>    ++timer_counter;</span>
+<span>}</span>
+<span></span>
+<span>// unimportant</span>
+<span>void setup();</span>
+<span>void send(int16_t *data);</span>
+<span></span>
+<span>// Main entry point into code</span>
+<span>int main() {</span>
+<span>    setup();</span>
+<span>    while (1) {</span>
+<span>        if (send_ticks) {</span>
+<span>            int16_t values;</span>
+<span>            send_ticks = 0;</span>
+<span></span>
+<span>            uint8_t index = (timer_counter & 0x10) ? 1 : 0;</span>
+<span>            values = ticks_accumulator[index];</span>
+<span>            ticks_accumulator[index] = 0;</span>
+<span>            send(&values);</span>
+<span>        }</span>
+<span>    }</span>
+<span>}</span>
           </pre>
-        </figure>
+        </code>
         <p>
 As a side-note: operations like <code>+=</code> and <code>++</code> on <code>volatile</code> variables have been deprecated in C++20, hence the warnings in Compiler Explorer.
         </p>
@@ -119,7 +119,7 @@ As a side-note: operations like <code>+=</code> and <code>++</code> on <code>vol
 A good example why putting <code>volatile</code> directly on the variable is not ideal can be seen with <code>timer_counter</code> in the timer ISR.
 Here is the assembly:
         </p>
-        <figure>
+        <code>
           <pre>
 __vector_9:                     // ISR(TIMER2_COMP_vect) {
         in   r18,   __RAMPZ__
@@ -167,7 +167,7 @@ __vector_9:                     // ISR(TIMER2_COMP_vect) {
         sts  send_ticks, r24    // send_ticks = 1;
         rjmp .L6
           </pre>
-        </figure>
+        </code>
         <p>
 Great, for some reason the compiler refuses to use the <code>bst</code> instruction to directly write a 0 or 2 byte offset, instead it writes 0 or 1 and then does a 16-bit shift.
 Compilers love leaving jokes like these around the machine-code, so you should definitely read through it from time to time to have a laugh!
@@ -193,11 +193,11 @@ So what we really want is not a volatile type, but a way to force the compiler t
 A way to achieve this is to cast the variable in question to be volatile in those places where we want to guarantee that it is loaded from memory.
 All we need is a simple macro:
         </p>
-        <figure>
+        <code>
           <pre>
 #define force_load(x) (*(volatile __typeof(x)*)&(x))
           </pre>
-        </figure>
+        </code>
         <p>
 It takes the address of the thing we want to read, casts it to be volatile and then dereferences it.
 Simple as that.
@@ -205,61 +205,61 @@ Simple as that.
         <p>
 And with that we can remove the volatile declarations from the global variables and instead use <code>force_load</code> in all the places that need it. 
         </p>
-        <figure>
+        <code>
           <pre>
-#include &lt;avr/io.h&gt;
-#include &lt;avr/interrupt.h&gt;
-
-#define force_load(x) (*(volatile __typeof(x)*)&(x))
-
-// Global variables
-int16_t ticks_accumulator[2] = {};
-int8_t  ticks = {};
-uint8_t timer_counter = 0;
-uint8_t send_ticks = 0;
-
-// Pin interrupt triggered by external sensor
-ISR(INT0_vect) {
-    int8_t sign = -1;
-    if ((PIND >> PD0) & 1) sign = -sign;
-    if ((PIND >> PD1) & 1) sign = -sign;
-    ticks += sign;
-}
-
-// Timer interrupt triggered every 0.624ms
-ISR(TIMER2_COMP_vect) {
-    uint8_t index = (timer_counter & 0x10) ? 1 : 0;
-    ticks_accumulator[index] += ticks;
-    ticks = 0;
-    
-    // every 16 times (9.984ms)
-    if ((timer_counter & 0x0F) == 0x0F) {
-        send_ticks = 1;
-    }
-    timer_counter += 1;
-}
-
-// unimportant
-void setup();
-void send(int16_t *data);
-
-// Main entry point into code
-int main() {
-    setup();
-    while (1) {
-        if (force_load(send_ticks)) {
-            int16_t values;
-            send_ticks = 0;
-
-            uint8_t index = (force_load(timer_counter) & 0x10) ? 1 : 0;
-            values = force_load(ticks_accumulator[index]);
-            ticks_accumulator[index] = 0;
-            send(&values);
-        }
-    }
-}
+<span>#include &lt;avr/io.h&gt;</span>
+<span>#include &lt;avr/interrupt.h&gt;</span>
+<span></span>
+<span>#define force_load(x) (*(volatile __typeof(x)*)&(x))</span>
+<span></span>
+<span>// Global variables</span>
+<span>int16_t ticks_accumulator[2] = {};</span>
+<span>int8_t  ticks = {};</span>
+<span>uint8_t timer_counter = 0;</span>
+<span>uint8_t send_ticks = 0;</span>
+<span></span>
+<span>// Pin interrupt triggered by external sensor</span>
+<span>ISR(INT0_vect) {</span>
+<span>    int8_t sign = -1;</span>
+<span>    if ((PIND >> PD0) & 1) sign = -sign;</span>
+<span>    if ((PIND >> PD1) & 1) sign = -sign;</span>
+<span>    ticks += sign;</span>
+<span>}</span>
+<span></span>
+<span>// Timer interrupt triggered every 0.624ms</span>
+<span>ISR(TIMER2_COMP_vect) {</span>
+<span>    uint8_t index = (timer_counter & 0x10) ? 1 : 0;</span>
+<span>    ticks_accumulator[index] += ticks;</span>
+<span>    ticks = 0;</span>
+<span>    </span>
+<span>    // every 16 times (9.984ms)</span>
+<span>    if ((timer_counter & 0x0F) == 0x0F) {</span>
+<span>        send_ticks = 1;</span>
+<span>    }</span>
+<span>    timer_counter += 1;</span>
+<span>}</span>
+<span></span>
+<span>// unimportant</span>
+<span>void setup();</span>
+<span>void send(int16_t *data);</span>
+<span></span>
+<span>// Main entry point into code</span>
+<span>int main() {</span>
+<span>    setup();</span>
+<span>    while (1) {</span>
+<span>        if (force_load(send_ticks)) {</span>
+<span>            int16_t values;</span>
+<span>            send_ticks = 0;</span>
+<span></span>
+<span>            uint8_t index = (force_load(timer_counter) & 0x10) ? 1 : 0;</span>
+<span>            values = force_load(ticks_accumulator[index]);</span>
+<span>            ticks_accumulator[index] = 0;</span>
+<span>            send(&values);</span>
+<span>        }</span>
+<span>    }</span>
+<span>}</span>
           </pre>
-        </figure>
+        </code>
         <p>
 You might have noticed, that only the <code>main</code> function makes use of this new macro.
 The reason is, that the interrupts have no way to cache variables long-term, so they have to reload the values every time they are called anyways.
@@ -268,7 +268,7 @@ And since this chip doesn't support nested interrupts, there is no way that for 
         <p>
 And to prove that the use of this macro is necessary, here is part of the main function with and without the macro:
         </p>
-        <figure>
+        <code>
           <pre>
 
 main:                                       │  main:
@@ -285,7 +285,7 @@ main:                                       │  main:
     ...                                     │
     rjmp .L9                                │
           </pre>
-        </figure>
+        </code>
         <p>
 Yup, without the forced load the compiler decided that if the variable is 0 once, it'll always be 0, no need to check again (though the <code>tst</code> instruction is repeated every time).
         </p>

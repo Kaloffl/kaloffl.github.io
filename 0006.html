@@ -54,9 +54,9 @@ While based on a off-the-shelf 1:8 electric model car with radio receiver, steer
           <li>Even in remote-control-mode the radio signal makes a round-trip through the Linux PC and back to the Arduino.</li>
         </ul>
         <p>
-And here's a diagram because I like love <a href="https://en.wikipedia.org/wiki/Box_Drawing" target="_blank">box drawing characters</a>:
+And here's a diagram because I love <a href="https://en.wikipedia.org/wiki/Box_Drawing" target="_blank">box drawing characters</a>:
         </p>
-        <figure id="figure0">
+        <code id="figure0">
           <pre>
 ╔══════════════╗     ╔══════════════╗        ╔═══════════╗       ╔════════════════╗
 ║   Linux PC   ║     ║   USB Hub    ║        ║  Arduino  ║       ║ Radio Receiver ║
@@ -87,7 +87,7 @@ And here's a diagram because I like love <a href="https://en.wikipedia.org/wiki/
 ╚══════════════╝     ╚══════════════╝
           </pre>
           <figcaption>Figure 0: System overview</figcaption>
-        </figure>
+        </code>
       </section>
 
       <section>
@@ -96,7 +96,7 @@ And here's a diagram because I like love <a href="https://en.wikipedia.org/wiki/
 While we're at introductions, let's also quickly go over PWM, especially as it is used for RC cars.
 A really useful tool to understand PWM is an oscilloscope (well, a logic analyzer might be enough), so let's pretend we have one:
         </p>
-        <figure id="figure1">
+        <code id="figure1">
           <pre>
 ╔═══════════════════════════════════════════════════════════════════════════════════════╗
 ║ LarTronix         1ms/div       4V/div         166.7Hz                                ║
@@ -127,7 +127,7 @@ A really useful tool to understand PWM is an oscilloscope (well, a logic analyze
 ╚═══════════════════════════════════════════════════════════════════════════════════════╝
           </pre>
           <figcaption>Figure 1: nice little PWM waveforms</figcaption>
-        </figure>
+        </code>
         <p>
 What we have in fig. 1 is what you should see when you connect an oscilloscope to two of the PWM related pins on the Arduino.
 Time goes from left to right, each grid cell being 0.001s, so the "high" part of the signal is 1.5ms long.
@@ -136,7 +136,7 @@ Oftentimes with PWM, we want to know the "duty cycle" which is the length the si
 With RC cars (and planes, drones, ...) a different convention is used: 1.5ms is defined to be "neutral" and this time is reduced or increased by up to 500µs to drive forward and backward or steer left right right.
 So this is what we get when turning the radio controllers steering wheel all the way to the left, giving full throttle and watching pin PD3 and PD2 on the Arduino: 
         </p>
-        <figure id="figure2">
+        <code id="figure2">
           <pre>
 ╔═══════════════════════════════════════════════════════════════════════════════════════╗
 ║ LarTronix         1ms/div       4V/div         166.7Hz                                ║
@@ -167,7 +167,7 @@ So this is what we get when turning the radio controllers steering wheel all the
 ╚═══════════════════════════════════════════════════════════════════════════════════════╝
           </pre>
           <figcaption>Figure 2: counterclockwise doughnuts!</figcaption>
-        </figure>
+        </code>
         <p>
 The only thing that changes is the distance between the rising and falling edge, while the period remains unchanged.
 Had we turned the steering wheel the other way, the edges would go further apart to 2ms and look the same as the throttle signal.
@@ -182,7 +182,7 @@ How do we work with such a PWM signal?
 In general, your average microcontroller offers a bunch of options to deal with PWM signals and the <a href="https://www.microchip.com/en-us/product/ATmega32U4" target="_blank">ATmega32U4</a> chip on the Arduino Micro is no different.
 However, these options are bound to specific pins, so let's see what we can use on PD2 and PD3 as inputs.
         </p>
-        <figure id="figure3">
+        <code id="figure3">
           <pre>
                               ┌────┐
                           ╔═══╡USB ╞═══╗
@@ -206,7 +206,7 @@ OC4A | CLKO | ICP3 | PC7 ─╫13 └┬┬┬┬┘ 12╫─ PD6 | T1   | !OC4D
                           ╚════════════╝
           </pre>
           <figcaption>Figure 3: Arduino Micro pinout</figcaption>
-        </figure>
+        </code>
         <p>
 There are not many functions on these pins: <code>RX/TXD1</code> are for serial communications, which we don't need here.
 The other option is much more promising: the external interrupts on these pins can be used to run some code whenever the logical level changes between high and low.
@@ -239,7 +239,7 @@ That's a lot of potential failure points, where to start?
 To get a better picture of how severe this problem is I started where I was pretty sure to find a bad signal: between the Arduino and the servo.
 With a scope and a few wires I found this: 
         </p>
-        <figure id="figure4">
+        <code id="figure4">
           <pre>
 ╔═══════════════════════════════════════════════════════════════════════════════════════╗
 ║ LarTronix         1ms/div       4V/div         166.7Hz          Δt: 1.58ms            ║
@@ -258,7 +258,7 @@ With a scope and a few wires I found this:
 ╚═══════════════════════════════════════════════════════════════════════════════════════╝
           </pre>
           <figcaption>Figure 4: the HTML blink tag would have been perfect for this!</figcaption>
-        </figure>
+        </code>
         <p>
 The car was supposed to be completely neutral, outputting an 1.5ms signal.
 What I found was that this was true most of the time, but occasionally the signal was up to 80µs longer than it should be.
@@ -268,7 +268,7 @@ As expected, these incorrect timings exactly matched when the car was twitching 
 While I'm at it I might as well probe the input side.
 Maybe there is a problem with the radio control or receiver.
         </p>
-        <figure id="figure5">
+        <code id="figure5">
           <pre>
 ╔═══════════════════════════════════════════════════════════════════════════════════════╗
 ║ LarTronix         1ms/div       4V/div         166.7Hz          Δt: 1.5ms             ║
@@ -287,11 +287,11 @@ Maybe there is a problem with the radio control or receiver.
 ╚═══════════════════════════════════════════════════════════════════════════════════════╝
           </pre>
           <figcaption>Figure 5: nope</figcaption>
-        </figure>
+        </code>
         <p>
 Then let's see what is going over this serial connection, maybe we find something suspicious there...
         </p>
-        <figure id="figure6">
+        <code id="figure6">
           <pre>
 ...
 In: 0x5A 0x5A
@@ -309,7 +309,7 @@ Out: 0x5A 0x5A
 ...
           </pre>
           <figcaption>Figure 6</figcaption>
-        </figure>
+        </code>
         <p>
 Nothing to see here...
 Other than the fact that apparently 90<sub>10</sub> is the neutral value, instead of 80<sub>16</sub>, as you might expect from a single byte (or y'know using a signed byte with 0 being neutral).
@@ -325,37 +325,37 @@ Time to dig into the sourcecode and find out out more.
         <p>
 Let's try to figure out the path of the signal from serial to PWM, maybe there is something obvious in there.
         </p>
-        <figure id="listing0">
+        <code id="listing0">
           <pre>
-...
-int16_t cmdSteering;
-int16_t cmdDrive;
-...
-Servo servo_steering;
-Servo servo_speed;
-...
-void setup() {
-  ...
-  servo_steering.attach(PIN_STEER_SERV);
-  servo_speed.attach(PIN_SPEED_CONTR);
-
-  servo_steering.write(90);
-  servo_speed.write(90);
-  ...
-}
-...
-void update() {
-  ...
-  cmdDrive    = Serial.read();
-  cmdSteering = Serial.read();
-  ...
-  servo_steering.write(cmdSteering);
-  servo_speed.write(cmdDrive);
-}
-...
+<span>...</span>
+<span>int16_t cmdSteering;</span>
+<span>int16_t cmdDrive;</span>
+<span>...</span>
+<span>Servo servo_steering;</span>
+<span>Servo servo_speed;</span>
+<span>...</span>
+<span>void setup() {</span>
+<span>  ...</span>
+<span>  servo_steering.attach(PIN_STEER_SERV);</span>
+<span>  servo_speed.attach(PIN_SPEED_CONTR);</span>
+<span></span>
+<span>  servo_steering.write(90);</span>
+<span>  servo_speed.write(90);</span>
+<span>  ...</span>
+<span>}</span>
+<span>...</span>
+<span>void update() {</span>
+<span>  ...</span>
+<span>  cmdDrive    = Serial.read();</span>
+<span>  cmdSteering = Serial.read();</span>
+<span>  ...</span>
+<span>  servo_steering.write(cmdSteering);</span>
+<span>  servo_speed.write(cmdDrive);</span>
+<span>}</span>
+<span>...</span>
           </pre>
           <figcaption>Listing 0</figcaption>
-        </figure>
+        </code>
         <p>
 I left out a lot here but this is ultimately it: the values are read in and passed to some instances of a class called Servo.
 Even though these variables are global, nobody else is modifying them, at least on purpose.
@@ -385,50 +385,50 @@ Who is doing this screwing in an upwards direction?
 You might have guessed it: the interrupts for reading the PWM signals.
 This also explains why the twitching behavior seems to drift in and out: both the radio receiver as well as the Arduino try to produce a signal with the same frequency, but since they run on different clocks, slight timing differences make them shift in and out of phase.
         </p>
-        <figure id="listing1">
+        <code id="listing1">
           <pre>
-...
-volatile int rcSteering;
-volatile uint32_t steeringHighTime;
-volatile uint32_t steeringLowTime;
-volatile int rcDrive;
-volatile uint32_t driveHighTime;
-volatile uint32_t driveLowTime;
-...
-void setup() {
-  ...
-  pinMode(1, INPUT);
-  attachInterrupt(3, interupt_rcDrive, CHANGE); 
-
-  pinMode(0, INPUT);
-  attachInterrupt(2, interupt_rcSteering, CHANGE);
-  ...
-}
-...
-void interupt_rcDrive() {
-  if (digitalRead(1)) {
-    long currentTime =  micros(); 
-    rcDrive = (1000 * (driveLowTime - driveHighTime)) / (currentTime - driveHighTime);
-    driveHighTime = currentTime;
-  } else {
-    driveLowTime = micros();
-  }
-}
-
-void interupt_rcSteering() {
-  // pretty much the same as above
-}
-...
-void update() {
-  ...
-  Serial.write(rcDrive);
-  Serial.write(rcSteering);
-  ...
-}
-...
+<span>...</span>
+<span>volatile int rcSteering;</span>
+<span>volatile uint32_t steeringHighTime;</span>
+<span>volatile uint32_t steeringLowTime;</span>
+<span>volatile int rcDrive;</span>
+<span>volatile uint32_t driveHighTime;</span>
+<span>volatile uint32_t driveLowTime;</span>
+<span>...</span>
+<span>void setup() {</span>
+<span>  ...</span>
+<span>  pinMode(1, INPUT);</span>
+<span>  attachInterrupt(3, interupt_rcDrive, CHANGE); </span>
+<span></span>
+<span>  pinMode(0, INPUT);</span>
+<span>  attachInterrupt(2, interupt_rcSteering, CHANGE);</span>
+<span>  ...</span>
+<span>}</span>
+<span>...</span>
+<span>void interupt_rcDrive() {</span>
+<span>  if (digitalRead(1)) {</span>
+<span>    long currentTime =  micros(); </span>
+<span>    rcDrive = (1000 * (driveLowTime - driveHighTime)) / (currentTime - driveHighTime);</span>
+<span>    driveHighTime = currentTime;</span>
+<span>  } else {</span>
+<span>    driveLowTime = micros();</span>
+<span>  }</span>
+<span>}</span>
+<span></span>
+<span>void interupt_rcSteering() {</span>
+<span>  // pretty much the same as above</span>
+<span>}</span>
+<span>...</span>
+<span>void update() {</span>
+<span>  ...</span>
+<span>  Serial.write(rcDrive);</span>
+<span>  Serial.write(rcSteering);</span>
+<span>  ...</span>
+<span>}</span>
+<span>...</span>
           </pre>
           <figcaption>Listing 1</figcaption>
-        </figure>
+        </code>
         <p>
 It took me a while to comprehend what was happening in this interrupt (note that you get to see the cleaned up version).
 The <code>else</code> branch is quite uninteresting, so let's focus on what happens when <code>digitalRead(1)</code> returns true.
@@ -456,66 +456,66 @@ Why yes you could!
 All we really care about is the timestamp, any calculation can be done later outside the ISR.
 So all we need is this:
         </p>
-        <figure id="listing2">
+        <code id="listing2">
           <pre>
-...
-uint8_t rcDrive;
-volatile uint32_t driveHighTime;
-volatile uint32_t driveLowTime;
-...
-void interupt_rcDrive() {
-  if (digitalRead(1)) {
-    driveHighTime = micros();
-    driveLowTime  = 0;
-  } else {
-    driveLowTime = micros();
-  }
-}
-...
+<span>...</span>
+<span>uint8_t rcDrive;</span>
+<span>volatile uint32_t driveHighTime;</span>
+<span>volatile uint32_t driveLowTime;</span>
+<span>...</span>
+<span>void interupt_rcDrive() {</span>
+<span>  if (digitalRead(1)) {</span>
+<span>    driveHighTime = micros();</span>
+<span>    driveLowTime  = 0;</span>
+<span>  } else {</span>
+<span>    driveLowTime = micros();</span>
+<span>  }</span>
+<span>}</span>
+<span>...</span>
           </pre>
           <figcaption>Listing 2</figcaption>
-        </figure>
+        </code>
         <p>
 Here the low time is set to 0 on a rising edge, so the outside code knows that a new measurement is in progress and the numbers aren't ready yet.
 This makes some assumptions about the other code that reads the timestamps, for example that it doesn't happen to always read <code>driveLowTime</code> when it is 0.
 But in practice this worked perfectly so far.
 Speaking of the reading code:
         </p>
-        <figure id="listing3">
+        <code id="listing3">
           <pre>
-...
-uint8_t rcDrive;
-volatile uint32_t driveHighTime;
-volatile uint32_t driveLowTime;
-...
-void update() {
-  ...
-  // Temporarily disable interrupts while we read the variables they touch.
-  cli();
-  if (driveLowTime) {
-    // The high time is expected to be between 1000µs and 2000µs, for which a signed 16-bit
-    // variable has plenty of space.
-    int16_t high_us = int16_t(driveLowTime - driveHighTime);
-    sei();
-
-    // 1500µs is the neutral point, deviations up to +-512 are expected.
-    int16_t deviation_us = high_us - 1500;
-    if (deviation_us &lt; -512) deviation_us = -512;
-    if ( 512 &lt; deviation_us) deviation_us =  512;
-
-    // The output's neutral value is 90 with deviations up to +-8. 64 perfectly divides 512 into 8
-    // and also allows the compiler to use shifts instead of division.
-    rcDrive = uint8_t(90 + (deviation_us / 64));
-  } else {
-    sei();
-  }
-  Serial.write(rcDrive);
-  ...
-}
-...
+<span>...</span>
+<span>uint8_t rcDrive;</span>
+<span>volatile uint32_t driveHighTime;</span>
+<span>volatile uint32_t driveLowTime;</span>
+<span>...</span>
+<span>void update() {</span>
+<span>  ...</span>
+<span>  // Temporarily disable interrupts while we read the variables they touch.</span>
+<span>  cli();</span>
+<span>  if (driveLowTime) {</span>
+<span>    // The high time is expected to be between 1000µs and 2000µs, for which a signed 16-bit</span>
+<span>    // variable has plenty of space.</span>
+<span>    int16_t high_us = int16_t(driveLowTime - driveHighTime);</span>
+<span>    sei();</span>
+<span></span>
+<span>    // 1500µs is the neutral point, deviations up to +-512 are expected.</span>
+<span>    int16_t deviation_us = high_us - 1500;</span>
+<span>    if (deviation_us &lt; -512) deviation_us = -512;</span>
+<span>    if ( 512 &lt; deviation_us) deviation_us =  512;</span>
+<span></span>
+<span>    // The output's neutral value is 90 with deviations up to +-8. 64 perfectly divides 512 into 8</span>
+<span>    // and also allows the compiler to use shifts instead of division.</span>
+<span>    rcDrive = uint8_t(90 + (deviation_us / 64));</span>
+<span>  } else {</span>
+<span>    sei();</span>
+<span>  }</span>
+<span>  Serial.write(rcDrive);</span>
+<span>  ...</span>
+<span>}</span>
+<span>...</span>
           </pre>
           <figcaption>Listing 3</figcaption>
-        </figure>
+        </code>
         <p>
 I also took the liberty to do the calculation based on the deviation from 1.5ms, instead of calculating the duty-cycle.
 This was not only for my sanity, but also necessary since the code no longer has three timestamps to work with.

@@ -42,7 +42,7 @@ The behavior of <code>std::max()</code> is consistent with the <code>maxss</code
 The answer probably is the <a href="https://en.wikipedia.org/wiki/IEEE_754" target="_blank">IEEE 754</a> standard, which not only defines the format for floating-point values, but also a bunch of operations for them.
 In chapter 9.6 these two operations are recommended:
         </p>
-        <figure>
+        <code>
           <pre>
 <b>maximum</b>(x, y) is x if x &gt; y, y if y &gt; x, and a quiet NaN if either operand is a NaN, according to 6.2.
 For this operation, +0 compares greater than −0. Otherwise (i.e., when x = y and signs are the
@@ -54,7 +54,7 @@ operand is a signaling NaN, an invalid operation exception is signaled, but unle
 are NaNs, the signaling NaN is otherwise ignored and not converted to a quiet NaN as stated in
 6.2 for other operations.
           </pre>
-        </figure>
+        </code>
         <p>
 So it turns out, that <code>fmax</code> implements the <code>maximum</code> operation, while <code>std::max()</code> and <code>maxss</code> don't follow the standard's recommendation.
         </p>
@@ -70,7 +70,7 @@ But C++ has a surprise for us: <code>std::fmax</code> also behaves like <code>ma
         <p>
 Let's summarize all of this in a neat little table and also add <code>min</code>:
         </p>
-        <figure>
+        <code>
           <pre>
 ┌───────────────┬────────┬──────────┬──────────┬────────────┐
 │ Operation     │ (0, 0) │ (0, NaN) │ (NaN, 0) │ (NaN, NaN) │
@@ -92,7 +92,7 @@ Let's summarize all of this in a neat little table and also add <code>min</code>
 │ maximumNumber │ 0      │ 0        │ 0        │ NaN        │
 └───────────────┴────────┴──────────┴──────────┴────────────┘
           </pre>
-        </figure>
+        </code>
         <p>
 Well, at least they all agree in two of the four columns!
         </p>

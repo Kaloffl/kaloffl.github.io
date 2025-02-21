@@ -58,7 +58,7 @@ This was a big (20MB!), optimized executable with no debug symbols.
 Quite the change of scenery for me.
 So let's just run it until the debugger catches the crash and go from there.
         </p>
-        <figure id="table0">
+        <code id="table0">
           <pre>
 EXCEPTION_DEBUG_INFO:
            dwFirstChance: 0
@@ -93,7 +93,7 @@ Last chance exception on 00007FF66E65FFA3 (C0000005, EXCEPTION_ACCESS_VIOLATION)
        │ 00007FF66E65FFC5 │ 90                       │ nop
           </pre>
           <figcaption>Listing 0: Site of the crash.</figcaption>
-        </figure>
+        </code>
         <p>
 Quite fitting that the debugger calls the Instruction Pointer "RIP" since this is where the program died.
 Fortunately I have a vague idea what this <code>movaps</code> instruction does: it moves data between memory and a 128-bit register.
@@ -113,7 +113,7 @@ And our luck isn't over: the instruction is encoded in the same number of bytes,
 So let's replace them and run the game again!
         </p>
 
-        <figure id="table1">
+        <code id="table1">
           <pre>
 EXCEPTION_DEBUG_INFO:
            dwFirstChance: 1
@@ -148,13 +148,13 @@ First chance exception on 00007FF66E65FFC2 (C0000005, EXCEPTION_ACCESS_VIOLATION
        │ 00007FF66E65FFC5 │ 90                       │ nop
           </pre>
           <figcaption>Listing 1: Another crash!</figcaption>
-        </figure>
+        </code>
         <p>
 Well darn, looks like we weren't that lucky after all, now we crash just a few instructions later on the return instruction.
 Having an access violation here can only mean that the program tries to jump to the wrong address, because someone has corrupted the stack or stack pointer (<code>rsp</code>).
 So what is our stack right now?
         </p>
-        <figure id="table2">
+        <code id="table2">
           <pre>
 Address          │ To               │ From             │ Size │ Comment                        
 ═════════════════╪══════════════════╪══════════════════╪══════╪════════════════════════════════
@@ -166,14 +166,14 @@ Address          │ To               │ From             │ Size │ Comment
 0000000010EBD4D4 │ 0000000000000000 │ 00000000FEEEFEEE │      │ 00000000FEEEFEEE               
           </pre>
           <figcaption>Listing 2: My stack isn't feeling very well.</figcaption>
-        </figure>
+        </code>
         <p>
 Yeah, that's not right.
 But is that because somebody did some redecorating and painted over the stack memory, or is it the <code>rsp</code> register not actually pointing to the stack?
 Well, we can already see in the disassembly, that the value in <code>rax</code> gets copied to <code>rsp</code>, but that isn't necessarily wrong, compilers love generating weird stuff like that.
 But we already had problems with <code>rax</code> not being aligned, so let's look at the place where it gets its value from.
         </p>
-        <figure id="table3">
+        <code id="table3">
           <pre>
 
 Address          │ Bytes                    │ Disassembly
@@ -188,7 +188,7 @@ Address          │ Bytes                    │ Disassembly
 00007FF66E65FD94 │ 0F38C9E5                 │ sha1msg1 xmm4,xmm5
           </pre>
           <figcaption>Listing 3: <code>rax</code> assignment.</figcaption>
-        </figure>
+        </code>
         <p>
 After scrolling up through the disassembly of a bunch of code doing something with SHA1 related instructions, we come to this <code>lea</code>.
 The mnemonic stands for 'load effective address', even though it doesn't load anything.
@@ -197,7 +197,7 @@ In this case it appears to only do addition to the value in the <code>rsi</code>
 So the hunt continue, what's in <code>rsi</code>?
         </p>
 
-        <figure id="table4">
+        <code id="table4">
           <pre>
 Address          │ Bytes                    │ Disassembly
 ═════════════════╪══════════════════════════╪══════════════════════════════
@@ -212,7 +212,7 @@ Address          │ Bytes                    │ Disassembly
 00007FF66E65FD16 │ 48:8D6424 B8             │ lea rsp,qword ptr ss:[rsp-48]
           </pre>
           <figcaption>Listing 4: <code>rsi</code> assignment.</figcaption>
-        </figure>
+        </code>
         <p>
 Scrolling a bit farther up, we come to what looks like the typical start of a function: a bunch of <code>nop</code>s above and some <code>mov</code>s that push registers onto the stack.
 If you go back to the <code>ret</code> you can see the code where they are popped back off the stack.
@@ -228,7 +228,7 @@ Who knows!
 Since I'm not convinced that is function is doing anything important anyway, I'm taking a stab in the dark and just <code>nop</code> out the <code>lea</code> where <code>rsi+40</code> is assigned to <code>rax</code>.
 This should fix both problems we've encountered so far: <code>rax</code> is now correctly aligned for the <code>movaps</code> and the stack pointer will be restored to the correct value before returning.
         </p>
-        <figure id="table5">
+        <code id="table5">
           <pre>
 Address          │ Bytes                    │ Disassembly
 ═════════════════╪══════════════════════════╪═══════════════════
@@ -245,7 +245,7 @@ Address          │ Bytes                    │ Disassembly
 00007FF66E65FD94 │ 0F38C9E5                 │ sha1msg1 xmm4,xmm5
           </pre>
           <figcaption>Listing 5: <code>nop</code>ed out of there.</figcaption>
-        </figure>
+        </code>
         <p>
 And indeed, after removing this one instruction, the game launched as it should.
 In fact I played through it entirely with no other issues.
